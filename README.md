@@ -36,15 +36,16 @@
 
 #### `.vscode/launch.json` 文件
 
-由于 `.vscode/launch.json` 文件中填写了你的酒馆地址, 你可能需要运行命令来忽略这个更改, 避免你的云酒馆 ip 地址暴露:
+`launch.json` 可能包含你的酒馆地址。当前仓库已将 `.vscode/launch.json` 设为本地化（ignore），默认不会入库，避免隐私泄漏。
 
 ```bash
-git update-index --skip-worktree .vscode/launch.json
+# 若你历史上已经追踪过它，可执行：
+git rm --cached .vscode/launch.json
 ```
 
 ### 示例文件夹
 
-请不要删除`示例`文件夹, AI 需要参考其中的代码; 但你可以在 `webpack.config.ts` 中将 54 行左右的 `{示例,src}/` 改为 `src/` 来避免打包它们.
+`示例/` 与 `初始模板/` 当前策略为本地化目录（不再入库追踪）。你可以在本地保留它们作为 AI/开发参考，也可以按需精简；CI 仅依赖 `src/` 的实际项目代码。
 
 #### 利用 jsdelivr 实现前端界面或脚本的自动更新
 

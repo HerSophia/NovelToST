@@ -22,6 +22,10 @@ components.d.ts
 # local reference material (not part of source of truth)
 参考项目/
 
+# local-only starter templates and examples
+初始模板/
+示例/
+
 # local vscode runtime config (may contain private endpoint)
 .vscode/launch.json
 

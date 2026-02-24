@@ -14,6 +14,7 @@
 - `components.d.ts`
 - 本地 AI/Agent 工作目录：`.augment/`、`.clinerules/`、`.kilocode/`、`.roo/`、`.limcode/`
 - 本地参考目录：`参考项目/`
+- 本地模板与示例目录：`初始模板/`、`示例/`
 - 本地敏感配置：`.vscode/launch.json`
 - 本地 MCP 配置：`.mcp.json`
 
@@ -68,3 +69,4 @@ git update-index --skip-worktree .vscode/launch.json
 - 2026-02-24：建立初版文档。
 - 2026-02-24：升级为 v2，移除模板同步相关策略描述，聚焦当前仓库的最小规则集。
 - 2026-02-24：升级为 v3，新增本地 AI/Agent 目录、参考目录与本地 launch/mcp 配置忽略规则，并从仓库追踪中移除对应文件。
+- 2026-02-24：补充将 `初始模板/` 与 `示例/` 本地化（纳入 ignore 并停止远端追踪）。
