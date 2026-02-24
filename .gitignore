@@ -11,3 +11,19 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+
+# local AI/agent workspace files
+.augment/
+.clinerules/
+.kilocode/
+.roo/
+.limcode/
+
+# local reference material (not part of source of truth)
+参考项目/
+
+# local vscode runtime config (may contain private endpoint)
+.vscode/launch.json
+
+# optional local MCP config
+.mcp.json

@@ -1,4 +1,4 @@
-# Ignore 策略（v2）
+# Ignore 策略（v3）
 
 > 目标：明确“哪些文件该入库，哪些应忽略”，减少协作噪音与敏感信息泄漏风险。
 
@@ -9,9 +9,13 @@
 当前已忽略：
 
 - `node_modules`
-- 常见日志文件
+- 常见日志文件（`*.log` / `pnpm-debug.log*` 等）
 - `auto-imports.d.ts`
 - `components.d.ts`
+- 本地 AI/Agent 工作目录：`.augment/`、`.clinerules/`、`.kilocode/`、`.roo/`、`.limcode/`
+- 本地参考目录：`参考项目/`
+- 本地敏感配置：`.vscode/launch.json`
+- 本地 MCP 配置：`.mcp.json`
 
 ### 1.2 `.prettierignore`
 
@@ -36,11 +40,13 @@
 - `git update-index --skip-worktree <file>`
 - 或 `.git/info/exclude`（仅本地生效，不影响团队）
 
-示例（仓库 README 已给出）：
+示例（当文件仍被版本管理时）：
 
 ```bash
 git update-index --skip-worktree .vscode/launch.json
 ```
+
+> 当前仓库已将 `.vscode/launch.json` 纳入 `.gitignore`，常规情况下不再需要额外执行该命令。
 
 ## 4. 新增 ignore 规则的准入标准
 
@@ -53,11 +59,12 @@ git update-index --skip-worktree .vscode/launch.json
 
 ## 5. 针对本仓库的建议
 
-- 先保持当前 `.gitignore` 最小化，不做大范围扩展。
-- 若后续出现新的生成产物（例如额外 d.ts、缓存目录）造成频繁噪音，再按“准入标准”逐条引入。
+- 保持“运行必需文件入库、个人环境文件忽略”的边界。
+- 若后续出现新的生成产物（例如缓存目录）造成频繁噪音，再按“准入标准”逐条引入。
 - 每次调整 ignore 规则时，同步更新本文档并标注日期。
 
 ## 6. 变更记录
 
 - 2026-02-24：建立初版文档。
 - 2026-02-24：升级为 v2，移除模板同步相关策略描述，聚焦当前仓库的最小规则集。
+- 2026-02-24：升级为 v3，新增本地 AI/Agent 目录、参考目录与本地 launch/mcp 配置忽略规则，并从仓库追踪中移除对应文件。
