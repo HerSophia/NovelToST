@@ -37,6 +37,18 @@ export default [
     },
   },
   {
+    files: ['tests/**/*.{ts,tsx}', 'vitest.config.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+    rules: {
+      'import-x/no-nodejs-modules': 'off',
+    },
+  },
+  {
     languageOptions: {
       parser: vueParser,
       parserOptions: {
