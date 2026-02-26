@@ -62,6 +62,7 @@ export function useGenerationControl() {
         currentChapter: settingsStore.settings.currentChapter,
       });
       uiStore.setStatusMessage('运行中');
+      generationStore.touchRuntimeNow();
 
       const loopResult = await startLoop({
         onAutoSave: async () => {
@@ -75,6 +76,7 @@ export function useGenerationControl() {
       if (loopResult.stoppedByUser) {
         generationStore.markIdle();
         uiStore.setStatusMessage('已停止');
+        generationStore.touchRuntimeNow();
         toastr.warning('任务已停止');
         return;
       }
@@ -83,12 +85,14 @@ export function useGenerationControl() {
         generationStore.markCompleted();
         uiStore.setStatusMessage('已完成');
         toastr.success('自动续写完成');
+        generationStore.touchRuntimeNow();
         doExportTXT({ silent: false });
         return;
       }
 
       generationStore.markIdle();
       uiStore.setStatusMessage('已结束');
+      generationStore.touchRuntimeNow();
     } catch (error) {
       const message = normalizeError(error);
       generationStore.markError(message, settingsStore.settings.currentChapter + 1);
@@ -96,24 +100,28 @@ export function useGenerationControl() {
       uiStore.setStatusMessage('执行失败');
       toastr.error(message, 'NovelToST 运行失败');
     }
+    generationStore.touchRuntimeNow();
   };
 
   const pause = () => {
     generationStore.pause();
     uiStore.setStatusMessage('已暂停');
     toastr.info('已暂停生成');
+    generationStore.touchRuntimeNow();
   };
 
   const resume = () => {
     generationStore.resume();
     uiStore.setStatusMessage('运行中');
     toastr.info('已恢复生成');
+    generationStore.touchRuntimeNow();
   };
 
   const stop = () => {
     generationStore.requestStop();
     uiStore.setStatusMessage('停止中');
     toastr.warning('已请求停止，等待当前步骤结束');
+    generationStore.touchRuntimeNow();
   };
 
   const reset = () => {
@@ -127,6 +135,7 @@ export function useGenerationControl() {
     exportStore.clearExportState();
     uiStore.setStatusMessage('进度已重置');
     toastr.info('已重置生成进度');
+    generationStore.touchRuntimeNow();
   };
 
   return {

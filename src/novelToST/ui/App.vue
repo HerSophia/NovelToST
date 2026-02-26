@@ -85,6 +85,9 @@
           <!-- Main Content Grid -->
           <div class="overflow-hidden border-t border-white/[0.06] bg-transparent pt-2 sm:pt-3">
             <main class="grid gap-3 sm:gap-4 lg:grid-cols-2">
+              <!-- Worldbook Panel - Full width above the grid -->
+              <WorldbookPanel v-model:collapsed="panelCollapsed.worldbook" class="lg:col-span-2" data-panel="worldbook" />
+
               <GenerationForm v-model:collapsed="panelCollapsed.generation" />
               <div class="flex flex-col gap-3 sm:gap-4">
                 <ExportPanel v-model:collapsed="panelCollapsed.export" @export-txt="doExportTXT()" @export-json="doExportJSON()" />
@@ -125,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useGenerationControl } from '../composables/useGenerationControl';
 import { useGenerationStore } from '../stores/generation.store';
 import { useUiStore } from '../stores/ui.store';
@@ -136,6 +139,7 @@ import GenerationForm from './components/GenerationForm.vue';
 import StatusBar from './components/StatusBar.vue';
 import HelpPanel from './components/HelpPanel.vue';
 import TagExtractPanel from './components/TagExtractPanel.vue';
+import WorldbookPanel from './components/worldbook/WorldbookPanel.vue';
 
 const generationStore = useGenerationStore();
 const uiStore = useUiStore();
@@ -169,6 +173,7 @@ const isGlobalCollapsed = ref(readBooleanPreference(`${STORAGE_PREFIX}.globalCol
 const panelCollapsed = reactive({
   generation: readBooleanPreference(`${STORAGE_PREFIX}.panel.generation`, false),
   export: readBooleanPreference(`${STORAGE_PREFIX}.panel.export`, true),
+  worldbook: readBooleanPreference(`${STORAGE_PREFIX}.panel.worldbook`, true),
   tags: readBooleanPreference(`${STORAGE_PREFIX}.panel.tags`, true),
   help: readBooleanPreference(`${STORAGE_PREFIX}.panel.help`, true),
 });
@@ -188,6 +193,13 @@ watch(
   () => panelCollapsed.export,
   value => {
     saveBooleanPreference(`${STORAGE_PREFIX}.panel.export`, value);
+  },
+);
+
+watch(
+  () => panelCollapsed.worldbook,
+  value => {
+    saveBooleanPreference(`${STORAGE_PREFIX}.panel.worldbook`, value);
   },
 );
 
@@ -221,6 +233,17 @@ const handleResetConfirm = () => {
 
 onMounted(() => {
   refreshPreview();
+
+  // Listen for the worldbook expand event from buttons/index.ts
+  window.addEventListener('novelToST:expandWorldbook', expandWorldbookHandler);
+});
+
+const expandWorldbookHandler = () => {
+  panelCollapsed.worldbook = false;
+};
+
+onUnmounted(() => {
+  window.removeEventListener('novelToST:expandWorldbook', expandWorldbookHandler);
 });
 </script>
 

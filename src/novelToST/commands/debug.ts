@@ -1,8 +1,10 @@
 import { buildTagPreview, extractTagContents, parseTagInput } from '../core/extract.service';
 import { useNovelSettingsStore } from '../stores/settings.store';
+import { useWorldbookStore } from '../stores/worldbook.store';
 import type { NovelSettings } from '../types';
 
-type DebugCommand = 'help' | 'settings' | 'floor' | 'latest' | 'tagPreview' | 'extract';
+type DebugCommand = 'help' | 'settings' | 'floor' | 'latest' | 'tagPreview' | 'extract'
+  | 'wbStatus' | 'wbQueue' | 'wbErrors' | 'wbEntries';
 
 type NovelToSTDebugFn = (command?: DebugCommand | string, payload?: unknown) => unknown;
 
@@ -46,6 +48,10 @@ const HELP_MESSAGE = {
     "window.novelToSTDebug('latest') // 检查最新 AI 楼层",
     "window.novelToSTDebug('tagPreview') // 查看当前标签预览",
     "window.novelToSTDebug('extract', { messageId: 12, tags: 'content detail' })",
+    "window.novelToSTDebug('wbStatus') // 世界书状态快照",
+    "window.novelToSTDebug('wbQueue') // 世界书队列快照",
+    "window.novelToSTDebug('wbErrors') // 世界书最近错误",
+    "window.novelToSTDebug('wbEntries') // 世界书已生成条目摘要",
   ],
 };
 
@@ -201,6 +207,7 @@ function runExtractDebug(payload: unknown, settings: NovelSettings) {
 
 export function registerNovelDebugCommand(): { unregister: () => void } {
   const settingsStore = useNovelSettingsStore();
+  const wbStore = useWorldbookStore();
 
   const debug: NovelToSTDebugFn = (command = 'help', payload) => {
     const settingsSnapshot = { ...settingsStore.settings };
@@ -247,6 +254,54 @@ export function registerNovelDebugCommand(): { unregister: () => void } {
         const extracted = runExtractDebug(payload, settingsSnapshot);
         console.debug('[novelToST][debug] extract', extracted);
         return extracted;
+      }
+      case 'wbStatus': {
+        const snapshot = {
+          status: wbStore.status,
+          totalChunks: wbStore.totalChunks,
+          processedChunks: wbStore.stats.processedChunks,
+          successfulChunks: wbStore.stats.successfulChunks,
+          failedChunks: wbStore.stats.failedChunks,
+          generatedEntries: wbStore.stats.generatedEntries,
+          currentChunkId: wbStore.currentChunkId,
+          stopRequested: wbStore.stopRequested,
+          errorMessage: wbStore.errorMessage,
+          startTime: wbStore.stats.startTime,
+          endTime: wbStore.stats.endTime,
+          progressPercent: wbStore.progressPercent,
+        };
+        console.debug('[novelToST][debug] wbStatus', snapshot);
+        return snapshot;
+      }
+      case 'wbQueue': {
+        const queue = wbStore.chunks.map(c => ({
+          id: c.id,
+          index: c.index,
+          processed: c.processed,
+          processing: c.processing,
+          failed: c.failed,
+          retryCount: c.retryCount,
+          errorMessage: c.errorMessage,
+          estimatedTokens: c.estimatedTokens,
+          chunkPreview: c.content.slice(0, 80),
+        }));
+        console.debug('[novelToST][debug] wbQueue', queue);
+        return queue;
+      }
+      case 'wbErrors': {
+        const errors = [...wbStore.stats.errors];
+        console.debug('[novelToST][debug] wbErrors', errors);
+        return errors;
+      }
+      case 'wbEntries': {
+        const entries = wbStore.generatedEntries.map(e => ({
+          name: e.name,
+          category: e.category,
+          keywords: e.keywords.join(', '),
+          sourceChunks: e.sourceChunkIds.length,
+        }));
+        console.debug('[novelToST][debug] wbEntries', entries);
+        return entries;
       }
       default: {
         console.warn(`[novelToST][debug] 未知命令: ${String(command)}`);

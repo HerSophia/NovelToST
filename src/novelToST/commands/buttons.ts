@@ -4,6 +4,7 @@ type NovelButtonHandlers = {
   resume: () => void;
   stop: () => void;
   exportTXT: () => void;
+  openWorldbook: () => void;
 };
 
 const BUTTONS: ScriptButton[] = [
@@ -12,6 +13,7 @@ const BUTTONS: ScriptButton[] = [
   { name: 'NovelToST-恢复', visible: true },
   { name: 'NovelToST-停止', visible: true },
   { name: 'NovelToST-导出TXT', visible: true },
+  { name: 'NovelToST-TXT转世界书', visible: true },
 ];
 
 export function registerNovelButtons(handlers: NovelButtonHandlers): { unregister: () => void } {
@@ -32,6 +34,9 @@ export function registerNovelButtons(handlers: NovelButtonHandlers): { unregiste
     }),
     eventOn(getButtonEvent('NovelToST-导出TXT'), () => {
       handlers.exportTXT();
+    }),
+    eventOn(getButtonEvent('NovelToST-TXT转世界书'), () => {
+      handlers.openWorldbook();
     }),
   ];
 

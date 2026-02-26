@@ -30,22 +30,38 @@
       </div>
     </div>
 
-    <div class="mt-4 grid grid-cols-2 gap-4 border-t border-white/5 pt-4 text-center sm:grid-cols-4">
+    <div class="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-4 text-center sm:grid-cols-3 xl:grid-cols-7">
       <div>
         <div class="text-[10px] tracking-wider text-slate-500 uppercase">当前章节</div>
-        <div class="text-lg font-medium text-slate-200">{{ settings.currentChapter }} / {{ settings.totalChapters }}</div>
+        <div class="text-sm font-medium text-slate-200 sm:text-base">{{ settings.currentChapter }} / {{ settings.totalChapters }}</div>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-wider text-slate-500 uppercase">剩余章节</div>
+        <div class="text-sm font-medium text-slate-200 sm:text-base">{{ generation.remainingChapters }}</div>
       </div>
       <div>
         <div class="text-[10px] tracking-wider text-slate-500 uppercase">重试次数</div>
-        <div class="text-lg font-medium text-slate-200">{{ generation.retryCount }}</div>
+        <div class="text-sm font-medium text-slate-200 sm:text-base">{{ generation.retryCount }}</div>
       </div>
       <div>
         <div class="text-[10px] tracking-wider text-slate-500 uppercase">已生成</div>
-        <div class="text-lg font-medium text-emerald-400">{{ generation.stats.chaptersGenerated }}</div>
+        <div class="text-sm font-medium text-emerald-400 sm:text-base">{{ generation.stats.chaptersGenerated }}</div>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-wider text-slate-500 uppercase">平均耗时</div>
+        <div class="text-sm font-medium text-cyan-300 sm:text-base">{{ averageChapterDurationLabel }}</div>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-wider text-slate-500 uppercase">运行时长</div>
+        <div class="text-sm font-medium text-slate-200 sm:text-base">{{ elapsedDurationLabel }}</div>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-wider text-slate-500 uppercase">预计剩余</div>
+        <div class="text-sm font-medium text-blue-300 sm:text-base">{{ etaDurationLabel }}</div>
       </div>
       <div>
         <div class="text-[10px] tracking-wider text-slate-500 uppercase">错误</div>
-        <div class="text-lg font-medium text-rose-400">{{ generation.stats.errors.length }}</div>
+        <div class="text-sm font-medium text-rose-400 sm:text-base">{{ generation.stats.errors.length }}</div>
       </div>
     </div>
 
@@ -60,7 +76,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useGenerationStore } from '../../stores/generation.store';
 import { useNovelSettingsStore } from '../../stores/settings.store';
 import { useUiStore } from '../../stores/ui.store';
@@ -77,6 +93,48 @@ const progress = computed(() => {
     return 0;
   }
   return Math.min(100, Number(((settings.value.currentChapter / settings.value.totalChapters) * 100).toFixed(1)));
+});
+
+const formatDuration = (ms: number | null) => {
+  if (ms === null || !Number.isFinite(ms)) {
+    return '--';
+  }
+
+  const safeMs = Math.max(0, Math.trunc(ms));
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+  }
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+const elapsedDurationLabel = computed(() => formatDuration(generation.elapsedMs));
+const averageChapterDurationLabel = computed(() => formatDuration(generation.averageChapterDurationMs));
+const etaDurationLabel = computed(() => formatDuration(generation.estimatedRemainingMs));
+
+let runtimeTimer: number | null = null;
+
+const syncRuntimeClock = () => {
+  generation.touchRuntimeNow();
+};
+
+onMounted(() => {
+  syncRuntimeClock();
+  runtimeTimer = window.setInterval(() => {
+    syncRuntimeClock();
+  }, 1000);
+});
+
+onBeforeUnmount(() => {
+  if (runtimeTimer !== null) {
+    window.clearInterval(runtimeTimer);
+    runtimeTimer = null;
+  }
 });
 
 const statusText = computed(() => {

@@ -54,4 +54,39 @@ describe('generation.store', () => {
     expect(store.abortRequested).toBe(false);
     expect(store.stats.endTime).not.toBeNull();
   });
+
+  it('should compute elapsed time, average chapter duration and eta without counting paused duration', () => {
+    vi.useFakeTimers();
+
+    const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+    vi.setSystemTime(base);
+
+    const store = useGenerationStore();
+    store.start({ targetChapters: 4, currentChapter: 0 });
+
+    vi.setSystemTime(base + 2000);
+    store.touchRuntimeNow(base + 2000);
+    store.recordGeneratedChapter(200);
+    store.setCurrentChapter(1);
+
+    expect(store.elapsedMs).toBe(2000);
+    expect(store.averageChapterDurationMs).toBe(2000);
+    expect(store.estimatedRemainingMs).toBe(6000);
+
+    store.pause();
+
+    vi.setSystemTime(base + 5000);
+    store.touchRuntimeNow(base + 5000);
+    expect(store.elapsedMs).toBe(2000);
+
+    store.resume();
+
+    vi.setSystemTime(base + 7000);
+    store.touchRuntimeNow(base + 7000);
+    expect(store.elapsedMs).toBe(4000);
+    expect(store.averageChapterDurationMs).toBe(4000);
+    expect(store.estimatedRemainingMs).toBe(12000);
+
+    vi.useRealTimers();
+  });
 });

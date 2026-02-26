@@ -8,8 +8,26 @@ function createEmptyStats(): GenerationStats {
     endTime: null,
     chaptersGenerated: 0,
     totalCharacters: 0,
+    pausedAt: null,
+    totalPausedMs: 0,
     errors: [],
   };
+}
+
+function calcElapsedMs(stats: GenerationStats, now: number): number {
+  if (stats.startTime === null) {
+    return 0;
+  }
+
+  const baseEnd = stats.endTime ?? now;
+  const elapsedRaw = Math.max(0, baseEnd - stats.startTime);
+
+  let pausedMs = Math.max(0, stats.totalPausedMs);
+  if (stats.endTime === null && stats.pausedAt !== null) {
+    pausedMs += Math.max(0, now - stats.pausedAt);
+  }
+
+  return Math.max(0, elapsedRaw - pausedMs);
 }
 
 export const useGenerationStore = defineStore('novelToST/generation', () => {
@@ -21,11 +39,46 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
   const errorMessage = ref<string | null>(null);
   const abortRequested = ref(false);
   const stats = ref<GenerationStats>(createEmptyStats());
+  const runtimeNow = ref(Date.now());
 
   const isRunning = computed(() => ['running', 'paused', 'stopping'].includes(status.value));
   const isPaused = computed(() => status.value === 'paused');
+  const remainingChapters = computed(() => Math.max(0, targetChapters.value - currentChapter.value));
+  const elapsedMs = computed(() => calcElapsedMs(stats.value, runtimeNow.value));
+  const averageChapterDurationMs = computed(() => {
+    if (stats.value.chaptersGenerated <= 0) {
+      return null;
+    }
+
+    return Math.max(0, Math.round(elapsedMs.value / stats.value.chaptersGenerated));
+  });
+  const estimatedRemainingMs = computed(() => {
+    if (remainingChapters.value <= 0) {
+      return 0;
+    }
+
+    if (averageChapterDurationMs.value === null) {
+      return null;
+    }
+
+    return Math.max(0, averageChapterDurationMs.value * remainingChapters.value);
+  });
+
+  const touchRuntimeNow = (timestamp: number = Date.now()) => {
+    runtimeNow.value = timestamp;
+  };
+
+  const finalizePauseWindow = (timestamp: number = Date.now()) => {
+    if (stats.value.pausedAt === null) {
+      return;
+    }
+
+    stats.value.totalPausedMs += Math.max(0, timestamp - stats.value.pausedAt);
+    stats.value.pausedAt = null;
+  };
 
   const start = (payload: { targetChapters: number; currentChapter: number }) => {
+    const startedAt = Date.now();
     status.value = 'running';
     targetChapters.value = payload.targetChapters;
     currentChapter.value = payload.currentChapter;
@@ -35,41 +88,57 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
     abortRequested.value = false;
     stats.value = {
       ...createEmptyStats(),
-      startTime: Date.now(),
+      startTime: startedAt,
     };
+    runtimeNow.value = startedAt;
   };
 
   const pause = () => {
     if (status.value === 'running') {
+      const pausedAt = Date.now();
       status.value = 'paused';
+      stats.value.pausedAt = pausedAt;
+      runtimeNow.value = pausedAt;
     }
   };
 
   const resume = () => {
     if (status.value === 'paused') {
+      const resumedAt = Date.now();
+      finalizePauseWindow(resumedAt);
       status.value = 'running';
+      runtimeNow.value = resumedAt;
     }
   };
 
   const requestStop = () => {
+    const requestedAt = Date.now();
+    finalizePauseWindow(requestedAt);
     abortRequested.value = true;
     if (status.value !== 'idle') {
       status.value = 'stopping';
     }
+    runtimeNow.value = requestedAt;
   };
 
   const markIdle = () => {
+    const endedAt = Date.now();
+    finalizePauseWindow(endedAt);
     status.value = 'idle';
     abortRequested.value = false;
     retryCount.value = 0;
-    stats.value.endTime = Date.now();
+    stats.value.endTime = endedAt;
+    runtimeNow.value = endedAt;
   };
 
   const markCompleted = () => {
+    const endedAt = Date.now();
+    finalizePauseWindow(endedAt);
     status.value = 'completed';
     abortRequested.value = false;
     retryCount.value = 0;
-    stats.value.endTime = Date.now();
+    stats.value.endTime = endedAt;
+    runtimeNow.value = endedAt;
   };
 
   const appendError = (message: string, chapter: number) => {
@@ -83,14 +152,19 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
   };
 
   const markError = (message: string, chapter: number) => {
+    const endedAt = Date.now();
+    finalizePauseWindow(endedAt);
     errorMessage.value = message;
     status.value = 'error';
+
     const record: GenerationErrorRecord = {
       chapter,
       message,
       timestamp: new Date().toISOString(),
     };
     stats.value.errors.push(record);
+    stats.value.endTime = endedAt;
+    runtimeNow.value = endedAt;
   };
 
   const clearError = () => {
@@ -117,6 +191,7 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
     lastGeneratedLength.value = safeLength;
     stats.value.chaptersGenerated += 1;
     stats.value.totalCharacters += safeLength;
+    runtimeNow.value = Date.now();
   };
 
   const resetProgress = () => {
@@ -128,12 +203,14 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
     errorMessage.value = null;
     abortRequested.value = false;
     stats.value = createEmptyStats();
+    runtimeNow.value = Date.now();
   };
 
   return {
     status,
     isRunning,
     isPaused,
+    remainingChapters,
     targetChapters,
     currentChapter,
     retryCount,
@@ -141,6 +218,9 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
     errorMessage,
     abortRequested,
     stats,
+    elapsedMs,
+    averageChapterDurationMs,
+    estimatedRemainingMs,
 
     start,
     pause,
@@ -156,5 +236,6 @@ export const useGenerationStore = defineStore('novelToST/generation', () => {
     incrementRetry,
     recordGeneratedChapter,
     resetProgress,
+    touchRuntimeNow,
   };
 });

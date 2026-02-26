@@ -20,6 +20,8 @@ describe('settings.store', () => {
     expect(store.settings.exportIncludeUser).toBe(true);
     expect(store.settings.extractMode).toBe('tags');
     expect(store.settings.prompt.length).toBeGreaterThan(0);
+    expect(store.settings.worldbook.chunkSize).toBe(15000);
+    expect(store.settings.worldbook.customApiProvider).toBe('gemini');
   });
 
   it('should fallback to defaults and warn when script variables are invalid', () => {
@@ -54,5 +56,26 @@ describe('settings.store', () => {
 
     store.setCurrentChapter(-5);
     expect(store.settings.currentChapter).toBe(0);
+  });
+
+  it('should migrate legacy worldbook fields into settings.worldbook and prefer nested values', () => {
+    stMocks.getVariables.mockReturnValue({
+      chunkSize: 18000,
+      parallelConcurrency: 6,
+      customApiProvider: 'openai',
+      worldbook: {
+        customApiProvider: 'deepseek',
+      },
+    });
+
+    const store = useNovelSettingsStore();
+    store.init();
+
+    expect(store.settings.worldbook.chunkSize).toBe(18000);
+    expect(store.settings.worldbook.parallelConcurrency).toBe(6);
+    expect(store.settings.worldbook.customApiProvider).toBe('deepseek');
+
+    store.patch({ worldbook: { chunkSize: 22000 } });
+    expect(store.settings.worldbook.chunkSize).toBe(22000);
   });
 });

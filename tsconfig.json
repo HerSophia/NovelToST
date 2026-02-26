@@ -8,6 +8,7 @@
       "type-fest",
       "yaml",
       "zod",
+      "vitest/globals"
     ],
     "target": "ESNext",
     "module": "ESNext",
@@ -43,6 +44,7 @@
     "初始模板",
     "示例",
     "src",
+    "tests",
     "util",
     "*.d.ts",
   ],
