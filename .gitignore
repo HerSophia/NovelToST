@@ -30,6 +30,10 @@ components.d.ts
 
 # local vscode runtime config (may contain private endpoint)
 .vscode/launch.json
+.vscode/settings.json
+
+# local build artifact override
+dist/novelToST/index.js
 
 # optional local MCP config
 .mcp.json
