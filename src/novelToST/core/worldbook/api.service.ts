@@ -1,5 +1,10 @@
 import type { NovelWorldbookSettings } from '../../types';
-import type { WorldbookApiErrorType, WorldbookApiResponse } from '../../types/worldbook';
+import type {
+  WorldbookApiErrorType,
+  WorldbookApiQuickTestResult,
+  WorldbookApiResponse,
+  WorldbookModelListResult,
+} from '../../types/worldbook';
 import { estimateTokenCount } from './token.service';
 
 const DEFAULT_TIMEOUT_MS = 120000;
@@ -347,7 +352,8 @@ type CustomRequestConfig = {
 };
 
 function buildCustomRequest(prompt: string, settings: NovelWorldbookSettings): CustomRequestConfig {
-  const provider = (settings.customApiProvider || 'gemini').trim().toLowerCase();
+  const providerRaw = (settings.customApiProvider || 'gemini').trim().toLowerCase();
+  const provider = providerRaw === 'openai-compat' ? 'openai-compatible' : providerRaw;
   const model = settings.customApiModel?.trim();
   const apiKey = settings.customApiKey?.trim();
   const endpoint = settings.customApiEndpoint?.trim();
@@ -513,6 +519,240 @@ function buildCustomRequest(prompt: string, settings: NovelWorldbookSettings): C
   }
 }
 
+function normalizeCustomProvider(provider: string | undefined): string {
+  const normalized = (provider || 'gemini').trim().toLowerCase();
+  return normalized === 'openai-compat' ? 'openai-compatible' : normalized;
+}
+
+function buildOpenAIModelsEndpoint(endpoint: string): string {
+  let modelsUrl = endpoint.trim() || 'http://127.0.0.1:5000/v1';
+  modelsUrl = ensureEndpointWithProtocol(modelsUrl, 'http://');
+
+  if (modelsUrl.endsWith('/chat/completions')) {
+    return modelsUrl.replace(/\/chat\/completions$/, '/models');
+  }
+
+  if (modelsUrl.endsWith('/v1')) {
+    return `${modelsUrl}/models`;
+  }
+
+  if (!modelsUrl.endsWith('/models')) {
+    return `${modelsUrl.replace(/\/$/, '')}/models`;
+  }
+
+  return modelsUrl;
+}
+
+type ModelListRequestConfig = {
+  provider: string;
+  url: string;
+  init: RequestInit;
+};
+
+function buildModelListRequest(settings: NovelWorldbookSettings): ModelListRequestConfig {
+  const provider = normalizeCustomProvider(settings.customApiProvider);
+  const apiKey = settings.customApiKey?.trim();
+  const endpoint = settings.customApiEndpoint?.trim();
+
+  switch (provider) {
+    case 'gemini': {
+      if (!apiKey) {
+        throw new WorldbookApiError('Gemini API Key 未设置', {
+          type: 'network',
+          provider,
+        });
+      }
+
+      return {
+        provider,
+        url: `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+        init: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      };
+    }
+
+    case 'gemini-proxy': {
+      if (!endpoint) {
+        throw new WorldbookApiError('Gemini Proxy Endpoint 未设置', {
+          type: 'network',
+          provider,
+        });
+      }
+
+      if (!apiKey) {
+        throw new WorldbookApiError('Gemini Proxy API Key 未设置', {
+          type: 'network',
+          provider,
+        });
+      }
+
+      const normalizedEndpoint = ensureEndpointWithProtocol(endpoint);
+      const endpointWithoutSlash = normalizedEndpoint.endsWith('/')
+        ? normalizedEndpoint.slice(0, -1)
+        : normalizedEndpoint;
+
+      return {
+        provider,
+        url: endpointWithoutSlash.endsWith('/models')
+          ? endpointWithoutSlash
+          : `${endpointWithoutSlash}/models`,
+        init: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+        },
+      };
+    }
+
+    case 'deepseek': {
+      if (!apiKey) {
+        throw new WorldbookApiError('DeepSeek API Key 未设置', {
+          type: 'network',
+          provider,
+        });
+      }
+
+      return {
+        provider,
+        url: 'https://api.deepseek.com/models',
+        init: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+        },
+      };
+    }
+
+    case 'openai-compatible':
+    case 'openai':
+    default: {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`;
+      }
+
+      return {
+        provider,
+        url: buildOpenAIModelsEndpoint(endpoint || 'http://127.0.0.1:5000/v1'),
+        init: {
+          method: 'GET',
+          headers,
+        },
+      };
+    }
+  }
+}
+
+function normalizeModelName(value: unknown): string {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized.startsWith('models/') ? normalized.slice('models/'.length) : normalized;
+  }
+
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  const candidates = [value.id, value.model, value.name, value.display_name, value.base_model];
+  for (const candidate of candidates) {
+    const normalized = normalizeModelName(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return '';
+}
+
+function extractModelNames(payload: unknown): string[] {
+  if (typeof payload === 'string') {
+    return Array.from(new Set(payload
+      .split(/[\n,，]+/)
+      .map(item => normalizeModelName(item))
+      .filter(Boolean)));
+  }
+
+  const candidates: unknown[] = [];
+
+  if (Array.isArray(payload)) {
+    candidates.push(...payload);
+  } else if (isRecord(payload)) {
+    if (Array.isArray(payload.data)) {
+      candidates.push(...payload.data);
+    }
+    if (Array.isArray(payload.models)) {
+      candidates.push(...payload.models);
+    }
+    if (Array.isArray(payload.result)) {
+      candidates.push(...payload.result);
+    }
+    if (isRecord(payload.data) && Array.isArray(payload.data.models)) {
+      candidates.push(...payload.data.models);
+    }
+  }
+
+  const normalized = candidates
+    .map(item => normalizeModelName(item))
+    .filter(Boolean);
+
+  return Array.from(new Set(normalized));
+}
+
+async function parseModelListResponse(response: Response, provider: string): Promise<WorldbookModelListResult> {
+  const rawText = await response.text();
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    return {
+      provider,
+      models: [],
+      raw: rawText,
+    };
+  }
+
+  const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+  const looksLikeJson = contentType.includes('json') || trimmed.startsWith('{') || trimmed.startsWith('[');
+  if (!looksLikeJson) {
+    return {
+      provider,
+      models: extractModelNames(trimmed),
+      raw: rawText,
+    };
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawText) as unknown;
+  } catch (error) {
+    throw new WorldbookApiError('模型列表响应 JSON 解析失败', {
+      type: 'json_parse',
+      provider,
+      statusCode: response.status,
+      responseSnippet: rawText.slice(0, 240),
+      cause: error,
+    });
+  }
+
+  return {
+    provider,
+    models: extractModelNames(payload),
+    raw: payload,
+  };
+}
+
 function getSillyTavernGenerator(requestId?: string): (prompt: string) => Promise<string> {
   const maybeGenerate = (globalThis as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
 
@@ -670,6 +910,94 @@ export async function callCustomAPI(
       options.signal.removeEventListener('abort', onAbort);
     }
   }
+}
+
+export async function fetchCustomApiModels(
+  settings: NovelWorldbookSettings,
+  options: {
+    timeoutMs?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<WorldbookModelListResult> {
+  if (settings.useTavernApi) {
+    throw new WorldbookApiError('当前使用 SillyTavern API，无需拉取自定义模型列表', {
+      type: 'network',
+      provider: 'sillytavern',
+    });
+  }
+
+  const timeoutMs = normalizeTimeoutMs(options.timeoutMs ?? settings.apiTimeout);
+  const requestConfig = buildModelListRequest(settings);
+  const provider = requestConfig.provider;
+
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  const onAbort = () => {
+    controller.abort();
+  };
+
+  if (options.signal) {
+    options.signal.addEventListener('abort', onAbort, { once: true });
+  }
+
+  try {
+    const response = await fetch(requestConfig.url, {
+      ...requestConfig.init,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      if (isRateLimitStatus(response.status) || isRateLimitMessage(responseBody)) {
+        throw new WorldbookApiError(`模型列表请求被限流 (${response.status})`, {
+          type: 'rate_limit',
+          provider,
+          statusCode: response.status,
+          responseSnippet: responseBody.slice(0, 240),
+        });
+      }
+
+      throw new WorldbookApiError(`模型列表请求失败: ${response.status} ${response.statusText}`, {
+        type: 'http_error',
+        provider,
+        statusCode: response.status,
+        responseSnippet: responseBody.slice(0, 240),
+      });
+    }
+
+    return await parseModelListResponse(response, provider);
+  } catch (error) {
+    throw toWorldbookApiError(error, provider, timeoutMs);
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    if (options.signal) {
+      options.signal.removeEventListener('abort', onAbort);
+    }
+  }
+}
+
+export async function quickTestWorldbookApi(
+  settings: NovelWorldbookSettings,
+  options: {
+    prompt?: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    requestId?: string;
+  } = {},
+): Promise<WorldbookApiQuickTestResult> {
+  const prompt = options.prompt?.trim() || '请只回复：OK';
+  const startedAt = Date.now();
+  const response = await callAPI(prompt, settings, options);
+
+  return {
+    provider: response.provider,
+    elapsedMs: Math.max(0, Date.now() - startedAt),
+    responseText: response.text,
+    outputTokens: response.outputTokens,
+  };
 }
 
 export async function callAPI(

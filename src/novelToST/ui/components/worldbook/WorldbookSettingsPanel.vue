@@ -12,14 +12,49 @@
           <div v-if="!wb.useTavernApi" class="grid gap-3">
             <BaseSelect v-model="wb.customApiProvider" label="API 提供商">
               <option value="openai">OpenAI</option>
+              <option value="openai-compatible">OpenAI 兼容</option>
               <option value="gemini">Gemini</option>
               <option value="gemini-proxy">Gemini (Proxy)</option>
-              <option value="claude">Claude</option>
-              <option value="openai-compat">OpenAI 兼容</option>
+              <option value="deepseek">DeepSeek</option>
             </BaseSelect>
             <BaseInput v-model="wb.customApiEndpoint" label="API 端点" placeholder="https://..." />
             <BaseInput v-model="wb.customApiModel" label="模型名称" placeholder="gemini-2.5-flash" />
+            <BaseSelect
+              v-if="modelOptions.length > 0"
+              :model-value="wb.customApiModel"
+              label="可用模型（快速选择）"
+              hint="从拉取结果中选择后会同步覆盖模型名称"
+              @update:model-value="wb.customApiModel = String($event)"
+            >
+              <option
+                v-for="model in modelOptions"
+                :key="model"
+                :value="model"
+              >
+                {{ model }}
+              </option>
+            </BaseSelect>
             <BaseInput v-model="wb.customApiKey" label="API Key" type="password" placeholder="sk-..." />
+
+            <div class="flex flex-wrap items-center gap-2">
+              <BaseButton
+                variant="secondary"
+                :disabled="modelFetchLoading || apiTestLoading"
+                @click="$emit('fetch-models')"
+              >
+                {{ modelFetchLoading ? '拉取中...' : '拉取模型' }}
+              </BaseButton>
+              <BaseButton
+                variant="secondary"
+                :disabled="modelFetchLoading || apiTestLoading"
+                @click="$emit('quick-test-api')"
+              >
+                {{ apiTestLoading ? '测试中...' : '快速测试' }}
+              </BaseButton>
+            </div>
+            <p v-if="modelStatusMessage" class="text-[11px]" :class="statusClass">
+              {{ modelStatusMessage }}
+            </p>
           </div>
 
           <BaseInput v-model.number="wb.apiTimeout" label="API 超时 (ms)" type="number" min="5000" hint="默认 120000ms" />
@@ -37,6 +72,14 @@
             <option value="ja">日本語</option>
           </BaseSelect>
         </div>
+        <BaseInput
+          v-model.number="wb.startChunkIndex"
+          class="mt-3"
+          label="起始块序号"
+          type="number"
+          min="1"
+          hint="仅对新建任务生效；若存在待处理队列则自动按队列继续"
+        />
 
         <div class="mt-3 grid gap-2">
           <BaseCheckbox v-model="wb.parallelEnabled">
@@ -127,18 +170,53 @@ import BaseInput from '../../base/BaseInput.vue';
 import BaseSelect from '../../base/BaseSelect.vue';
 import BaseTextarea from '../../base/BaseTextarea.vue';
 
-defineProps<{
-  collapsed?: boolean;
-}>();
+type ApiStatusType = 'idle' | 'loading' | 'success' | 'error';
+
+const props = withDefaults(
+  defineProps<{
+    collapsed?: boolean;
+    modelOptions?: string[];
+    modelStatusType?: ApiStatusType;
+    modelStatusMessage?: string;
+    modelFetchLoading?: boolean;
+    apiTestLoading?: boolean;
+  }>(),
+  {
+    collapsed: false,
+    modelOptions: () => [],
+    modelStatusType: 'idle',
+    modelStatusMessage: '',
+    modelFetchLoading: false,
+    apiTestLoading: false,
+  },
+);
 
 const emit = defineEmits<{
   'update:collapsed': [value: boolean];
   'export-settings': [];
   'import-settings': [];
+  'fetch-models': [];
+  'quick-test-api': [];
 }>();
 
 const settingsStore = useNovelSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 
 const wb = computed(() => settings.value.worldbook);
+const modelOptions = computed(() => props.modelOptions);
+const modelFetchLoading = computed(() => props.modelFetchLoading);
+const apiTestLoading = computed(() => props.apiTestLoading);
+const modelStatusMessage = computed(() => props.modelStatusMessage);
+const statusClass = computed(() => {
+  switch (props.modelStatusType) {
+    case 'success':
+      return 'text-emerald-400';
+    case 'error':
+      return 'text-rose-400';
+    case 'loading':
+      return 'text-amber-300';
+    default:
+      return 'text-slate-400';
+  }
+});
 </script>

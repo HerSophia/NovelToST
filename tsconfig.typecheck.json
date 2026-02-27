@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/novelToST",
+    "tests",
+    "util/script.ts",
+    "*.d.ts"
+  ],
+  "exclude": [
+    "@types/**",
+    "初始模板/**",
+    "示例/**",
+    "**/dist/**",
+    "**/node_modules/**"
+  ]
+}

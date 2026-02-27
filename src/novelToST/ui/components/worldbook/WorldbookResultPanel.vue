@@ -29,15 +29,38 @@
         显示 {{ filteredEntries.length }} / {{ wbStore.generatedEntries.length }} 条目
       </div>
 
+      <div class="flex flex-wrap items-center justify-between gap-2 rounded border border-white/5 bg-white/[0.01] px-2 py-1.5">
+        <div class="flex items-center gap-2">
+          <BaseCheckbox
+            :model-value="allFilteredSelected"
+            label="全选当前筛选"
+            @update:model-value="toggleSelectFiltered"
+          />
+          <button
+            class="text-[10px] text-slate-500 hover:text-slate-300"
+            :disabled="selectedEntryIds.length === 0"
+            @click="clearSelection"
+          >
+            清空选择
+          </button>
+        </div>
+        <span class="text-[10px] text-slate-500">已选 {{ selectedEntryIds.length }} 条</span>
+      </div>
+
       <!-- Entries list -->
       <div class="max-h-80 overflow-y-auto">
         <div
           v-for="entry in filteredEntries"
           :key="entry.id"
-          class="mb-2 rounded border border-white/5 bg-white/[0.02] p-2"
+          class="mb-2 rounded border bg-white/[0.02] p-2"
+          :class="isSelected(entry.id) ? 'border-cyan-400/40' : 'border-white/5'"
         >
           <div class="mb-1.5 flex items-center justify-between">
             <div class="flex items-center gap-2">
+              <BaseCheckbox
+                :model-value="isSelected(entry.id)"
+                @update:model-value="toggleEntrySelection(entry.id, $event)"
+              />
               <span class="rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] text-violet-300">
                 {{ entry.category }}
               </span>
@@ -85,16 +108,23 @@
         <BaseButton variant="ghost" size="sm" @click="emit('export-entries')">
           导出条目
         </BaseButton>
+        <BaseButton variant="ghost" size="sm" @click="emit('import-entries')">
+          导入条目
+        </BaseButton>
+        <BaseButton variant="danger" :disabled="selectedEntryIds.length === 0" @click="removeSelectedEntries">
+          删除选中（{{ selectedEntryIds.length }}）
+        </BaseButton>
       </div>
     </div>
   </BaseCard>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useWorldbookStore } from '../../../stores/worldbook.store';
 import BaseButton from '../../base/BaseButton.vue';
 import BaseCard from '../../base/BaseCard.vue';
+import BaseCheckbox from '../../base/BaseCheckbox.vue';
 import BaseInput from '../../base/BaseInput.vue';
 import BaseSelect from '../../base/BaseSelect.vue';
 import type { WorldbookEntry } from '../../../types/worldbook';
@@ -108,13 +138,16 @@ const emit = defineEmits<{
   'reroll-entry': [entry: WorldbookEntry];
   'remove-entry': [entryId: string];
   'open-search-replace': [];
+  'remove-entries': [entryIds: string[]];
   'export-entries': [];
+  'import-entries': [];
 }>();
 
 const wbStore = useWorldbookStore();
 
 const searchQuery = ref('');
 const filterCategory = ref('');
+const selectedEntryIds = ref<string[]>([]);
 
 const categories = computed(() => {
   const set = new Set<string>();
@@ -144,8 +177,62 @@ const filteredEntries = computed(() => {
   return entries;
 });
 
+const allFilteredSelected = computed(() => {
+  if (filteredEntries.value.length === 0) {
+    return false;
+  }
+
+  const selectedSet = new Set(selectedEntryIds.value);
+  return filteredEntries.value.every(entry => selectedSet.has(entry.id));
+});
+
+function isSelected(entryId: string): boolean {
+  return selectedEntryIds.value.includes(entryId);
+}
+
+function toggleEntrySelection(entryId: string, checked: boolean): void {
+  if (checked) {
+    selectedEntryIds.value = Array.from(new Set([...selectedEntryIds.value, entryId]));
+    return;
+  }
+
+  selectedEntryIds.value = selectedEntryIds.value.filter(id => id !== entryId);
+}
+
+function toggleSelectFiltered(checked: boolean): void {
+  if (!checked) {
+    clearSelection();
+    return;
+  }
+
+  const nextIds = new Set(selectedEntryIds.value);
+  for (const entry of filteredEntries.value) {
+    nextIds.add(entry.id);
+  }
+  selectedEntryIds.value = Array.from(nextIds);
+}
+
+function clearSelection(): void {
+  selectedEntryIds.value = [];
+}
+
+function removeSelectedEntries(): void {
+  if (selectedEntryIds.value.length === 0) return;
+  emit('remove-entries', [...selectedEntryIds.value]);
+  selectedEntryIds.value = [];
+}
+
 function truncateContent(content: string, maxLen = 200): string {
   if (content.length <= maxLen) return content;
   return content.slice(0, maxLen) + '...';
 }
+
+watch(
+  () => wbStore.generatedEntries.map(entry => entry.id),
+  (currentIds) => {
+    const valid = new Set(currentIds);
+    selectedEntryIds.value = selectedEntryIds.value.filter(id => valid.has(id));
+  },
+  { immediate: true },
+);
 </script>

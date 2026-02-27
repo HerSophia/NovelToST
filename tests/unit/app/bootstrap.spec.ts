@@ -130,12 +130,18 @@ function createIframeDocument(bodyHeight: number, docHeight: number): Document {
   return doc;
 }
 
+function setIframeContentDocument(doc: Document | null): void {
+  (bootstrapMock.iframeElement as unknown as {
+    contentDocument: Document | null;
+  }).contentDocument = doc;
+}
+
 describe('bootstrapNovelToSTPanel', () => {
   beforeEach(() => {
     vi.useFakeTimers();
 
     bootstrapMock.state.loadHandler = null;
-    bootstrapMock.iframeElement.contentDocument = null;
+    setIframeContentDocument(null);
 
     bootstrapMock.createScriptIdDiv.mockClear();
     bootstrapMock.createScriptIdIframe.mockClear();
@@ -190,7 +196,7 @@ describe('bootstrapNovelToSTPanel', () => {
     vi.stubGlobal('ResizeObserver', ResizeObserverMock as unknown as typeof ResizeObserver);
 
     const iframeDoc = createIframeDocument(120, 160);
-    bootstrapMock.iframeElement.contentDocument = iframeDoc;
+    setIframeContentDocument(iframeDoc);
 
     const { unmount } = bootstrapNovelToSTPanel();
 
@@ -208,7 +214,7 @@ describe('bootstrapNovelToSTPanel', () => {
     expect(bootstrapMock.iframe.css).toHaveBeenCalledWith('height', '160px');
 
     const cssCallsBeforeNullDoc = bootstrapMock.iframe.css.mock.calls.length;
-    bootstrapMock.iframeElement.contentDocument = null;
+    setIframeContentDocument(null);
     resizeObserverState.callback?.([] as ResizeObserverEntry[], {} as ResizeObserver);
     expect(bootstrapMock.iframe.css.mock.calls.length).toBe(cssCallsBeforeNullDoc);
 
@@ -227,7 +233,7 @@ describe('bootstrapNovelToSTPanel', () => {
   it('should ignore iframe load when contentDocument is missing', () => {
     const { unmount } = bootstrapNovelToSTPanel();
 
-    bootstrapMock.iframeElement.contentDocument = null;
+    setIframeContentDocument(null);
     bootstrapMock.state.loadHandler?.call(bootstrapMock.iframeElement);
 
     expect(bootstrapMock.teleportStyle).not.toHaveBeenCalled();

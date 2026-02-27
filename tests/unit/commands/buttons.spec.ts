@@ -9,6 +9,7 @@ describe('buttons command', () => {
       resume: vi.fn(),
       stop: vi.fn(),
       exportTXT: vi.fn(),
+      openWorldbook: vi.fn(),
     };
 
     const callbacks = new Map<string, () => void>();
@@ -31,6 +32,7 @@ describe('buttons command', () => {
         expect.objectContaining({ name: 'NovelToST-恢复' }),
         expect.objectContaining({ name: 'NovelToST-停止' }),
         expect.objectContaining({ name: 'NovelToST-导出TXT' }),
+        expect.objectContaining({ name: 'NovelToST-TXT转世界书' }),
       ]),
     );
 
@@ -39,12 +41,14 @@ describe('buttons command', () => {
     callbacks.get('evt:NovelToST-恢复')?.();
     callbacks.get('evt:NovelToST-停止')?.();
     callbacks.get('evt:NovelToST-导出TXT')?.();
+    callbacks.get('evt:NovelToST-TXT转世界书')?.();
 
     expect(handlers.start).toHaveBeenCalledTimes(1);
     expect(handlers.pause).toHaveBeenCalledTimes(1);
     expect(handlers.resume).toHaveBeenCalledTimes(1);
     expect(handlers.stop).toHaveBeenCalledTimes(1);
     expect(handlers.exportTXT).toHaveBeenCalledTimes(1);
+    expect(handlers.openWorldbook).toHaveBeenCalledTimes(1);
 
     registration.unregister();
 

@@ -118,6 +118,19 @@ export type WorldbookApiResponse = {
   raw: unknown;
 };
 
+export type WorldbookModelListResult = {
+  provider: string;
+  models: string[];
+  raw: unknown;
+};
+
+export type WorldbookApiQuickTestResult = {
+  provider: string;
+  elapsedMs: number;
+  responseText: string;
+  outputTokens: number;
+};
+
 export type WorldbookChunkExecutionResult = {
   responseText: string;
   outputTokens?: number;
@@ -181,7 +194,7 @@ export type WorldbookChunkExecutor = (payload: {
 }) => Promise<WorldbookChunkExecutionResult>;
 
 export type WorldbookProcessOptions = {
-  chunks: MemoryChunk[];
+  chunks: ReadonlyArray<MemoryChunk>;
   processing: WorldbookProcessingOptions;
   maxRetries?: number;
   retryBackoffMs?: number;

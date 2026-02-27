@@ -82,4 +82,45 @@ describe('worldbook.store', () => {
     expect(store.generatedEntries).toHaveLength(0);
     expect(store.status).toBe('idle');
   });
+
+  it('should replace chunk queue and normalize indexes', () => {
+    const store = useWorldbookStore();
+
+    store.prepare([createChunk(0, 'wb-chunk-1'), createChunk(1, 'wb-chunk-2'), createChunk(2, 'wb-chunk-3')]);
+    store.markChunkProcessing('wb-chunk-2');
+
+    store.replaceChunks([
+      {
+        ...createChunk(0, 'merged-1'),
+        index: 0,
+        content: 'merged content',
+      },
+      {
+        ...createChunk(2, 'wb-chunk-3'),
+        index: 5,
+      },
+    ]);
+
+    expect(store.totalChunks).toBe(2);
+    expect(store.chunks[0]).toMatchObject({ id: 'merged-1', index: 0, content: 'merged content' });
+    expect(store.chunks[1]).toMatchObject({ id: 'wb-chunk-3', index: 1 });
+    expect(store.currentChunkId).toBeNull();
+  });
+
+  it('should clear stale error message when restarting processing', () => {
+    const store = useWorldbookStore();
+
+    store.prepare([createChunk(0, 'wb-chunk-1')]);
+    store.start();
+    store.markChunkProcessing('wb-chunk-1');
+    store.markChunkFailure({ chunkId: 'wb-chunk-1', message: '上轮失败' });
+
+    expect(store.errorMessage).toBe('上轮失败');
+
+    store.setStatus('completed');
+    store.start();
+
+    expect(store.status).toBe('running');
+    expect(store.errorMessage).toBeNull();
+  });
 });

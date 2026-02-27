@@ -23,7 +23,6 @@
           <label class="cursor-pointer rounded bg-violet-500/10 px-3 py-1.5 text-xs text-violet-300 hover:bg-violet-500/20">
             选择 TXT 文件
             <input
-              ref="fileInputRef"
               type="file"
               accept=".txt,.text"
               class="hidden"
@@ -80,26 +79,42 @@
       <MemoryQueuePanel
         v-model:collapsed="subPanelCollapsed.queue"
         @reroll-chunk="openRerollChunkModal"
+        @merge-up="ctrl.mergeChunkUp"
+        @merge-down="ctrl.mergeChunkDown"
+        @retry-failed-chunk="ctrl.retryFailedChunk"
+        @retry-all-failed="ctrl.retryAllFailedChunks"
       />
 
       <WorldbookResultPanel
         v-model:collapsed="subPanelCollapsed.result"
         @reroll-entry="openRerollEntryModal"
         @remove-entry="ctrl.removeEntry"
+        @remove-entries="ctrl.removeEntries"
         @open-search-replace="showSearchReplaceModal = true"
-        @export-entries="handleExportEntries"
+        @export-entries="ctrl.doExportEntries"
+        @import-entries="triggerEntriesImport"
       />
 
       <WorldbookSettingsPanel
         v-model:collapsed="subPanelCollapsed.settings"
+        :model-options="ctrl.modelOptions.value"
+        :model-status-type="ctrl.modelStatusType.value"
+        :model-status-message="ctrl.modelStatusMessage.value"
+        :model-fetch-loading="ctrl.modelFetchLoading.value"
+        :api-test-loading="ctrl.apiTestLoading.value"
         @export-settings="ctrl.doExportSettings()"
         @import-settings="triggerSettingsImport"
+        @fetch-models="ctrl.fetchModelList()"
+        @quick-test-api="ctrl.quickTestApi()"
       />
 
       <!-- Action buttons -->
       <div class="flex flex-wrap gap-2 border-t border-white/10 pt-3">
         <BaseButton variant="ghost" @click="showHistoryModal = true">
           查看历史
+        </BaseButton>
+        <BaseButton variant="ghost" :disabled="!ctrl.canUndoEdit.value" @click="ctrl.undoLastEdit()">
+          撤销{{ ctrl.lastEditAction.value ? `：${ctrl.lastEditAction.value}` : '' }}
         </BaseButton>
         <BaseButton variant="ghost" @click="ctrl.doExportTaskState()">
           导出任务
@@ -124,6 +139,14 @@
       accept=".json"
       class="hidden"
       @change="handleTaskImport"
+    />
+
+    <input
+      ref="entriesImportRef"
+      type="file"
+      accept=".json"
+      class="hidden"
+      @change="handleEntriesImport"
     />
 
     <!-- Modals -->
@@ -151,6 +174,16 @@
       description="将请求停止世界书处理，当前正在处理的块会在安全点结束。"
       @confirm="ctrl.stop()"
     />
+
+    <ImportMergeModal
+      :model-value="showImportMergeModal"
+      :preview="importPreviewPayload"
+      :loading="ctrl.entryImportMerging.value"
+      :default-concurrency="ctrl.wbSettings.value.parallelConcurrency"
+      :default-custom-prompt="ctrl.wbSettings.value.customMergePrompt"
+      @update:model-value="handleImportMergeModalChange"
+      @confirm="handleConfirmImportMerge"
+    />
   </BaseCard>
 </template>
 
@@ -163,11 +196,17 @@ import BaseCard from '../../base/BaseCard.vue';
 import BaseTextarea from '../../base/BaseTextarea.vue';
 import ConfirmStopModal from '../ConfirmStopModal.vue';
 import HistoryModal from './HistoryModal.vue';
+import ImportMergeModal from './ImportMergeModal.vue';
 import MemoryQueuePanel from './MemoryQueuePanel.vue';
 import RerollModal from './RerollModal.vue';
 import SearchReplaceModal from './SearchReplaceModal.vue';
 import WorldbookResultPanel from './WorldbookResultPanel.vue';
 import WorldbookSettingsPanel from './WorldbookSettingsPanel.vue';
+import type {
+  WorldbookAliasMergeGroup,
+  WorldbookAliasMergeMode,
+  WorldbookMergeMode,
+} from '../../../core/worldbook/merge.service';
 import type { WorldbookEntry } from '../../../types/worldbook';
 
 defineProps<{
@@ -181,9 +220,9 @@ const emit = defineEmits<{
 const ctrl = useWorldbookControl();
 const wbStore = useWorldbookStore();
 
-const fileInputRef = ref<HTMLInputElement | null>(null);
 const settingsImportRef = ref<HTMLInputElement | null>(null);
 const taskImportRef = ref<HTMLInputElement | null>(null);
+const entriesImportRef = ref<HTMLInputElement | null>(null);
 
 const subPanelCollapsed = reactive({
   queue: false,
@@ -196,6 +235,7 @@ const showHistoryModal = ref(false);
 const showRerollModal = ref(false);
 const showSearchReplaceModal = ref(false);
 const showStopConfirmModal = ref(false);
+const showImportMergeModal = ref(false);
 
 // Reroll state
 const rerollMode = ref<'chunk' | 'entry'>('chunk');
@@ -225,6 +265,18 @@ const statusBadgeClass = computed(() => {
     case 'error': return 'bg-rose-500/15 text-rose-400';
     default: return 'bg-slate-500/15 text-slate-400';
   }
+});
+
+
+const importPreviewPayload = computed(() => {
+  if (!ctrl.entryImportPreview.value) {
+    return null;
+  }
+
+  return {
+    fileName: ctrl.entryImportPreview.value.fileName,
+    preview: ctrl.entryImportPreview.value.preview,
+  };
 });
 
 // File handling
@@ -281,6 +333,10 @@ function triggerTaskImport() {
   taskImportRef.value?.click();
 }
 
+function triggerEntriesImport() {
+  entriesImportRef.value?.click();
+}
+
 function handleSettingsImport(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -295,20 +351,40 @@ function handleTaskImport(event: Event) {
   input.value = '';
 }
 
-function handleExportEntries() {
-  const entries = wbStore.generatedEntries;
-  if (entries.length === 0) {
-    toastr.warning('暂无条目可导出');
+async function handleEntriesImport(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+
+  if (!file) {
     return;
   }
-  const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `worldbook-entries-${Date.now()}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-  toastr.success(`已导出 ${entries.length} 条目`);
+
+  await ctrl.doPrepareImportEntries(file);
+  showImportMergeModal.value = ctrl.entryImportPreview.value !== null;
+}
+
+function handleImportMergeModalChange(value: boolean): void {
+  showImportMergeModal.value = value;
+  if (!value) {
+    ctrl.clearEntryImportPreview();
+  }
+}
+
+async function handleConfirmImportMerge(payload: {
+  mode: WorldbookMergeMode;
+  customPrompt?: string;
+  concurrency?: number;
+  aliasMerge?: {
+    groups: WorldbookAliasMergeGroup[];
+    mode: WorldbookAliasMergeMode;
+    keepAliases: boolean;
+  };
+}): Promise<void> {
+  const success = await ctrl.doConfirmImportEntriesMerge(payload);
+  if (success) {
+    showImportMergeModal.value = false;
+  }
 }
 
 function handleSearchReplaced(count: number) {

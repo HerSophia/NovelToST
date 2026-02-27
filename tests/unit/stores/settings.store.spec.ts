@@ -22,6 +22,7 @@ describe('settings.store', () => {
     expect(store.settings.prompt.length).toBeGreaterThan(0);
     expect(store.settings.worldbook.chunkSize).toBe(15000);
     expect(store.settings.worldbook.customApiProvider).toBe('gemini');
+    expect(store.settings.worldbook.startChunkIndex).toBe(1);
   });
 
   it('should fallback to defaults and warn when script variables are invalid', () => {
@@ -63,8 +64,10 @@ describe('settings.store', () => {
       chunkSize: 18000,
       parallelConcurrency: 6,
       customApiProvider: 'openai',
+      startChunkIndex: 8,
       worldbook: {
         customApiProvider: 'deepseek',
+        startChunkIndex: 5,
       },
     });
 
@@ -74,6 +77,7 @@ describe('settings.store', () => {
     expect(store.settings.worldbook.chunkSize).toBe(18000);
     expect(store.settings.worldbook.parallelConcurrency).toBe(6);
     expect(store.settings.worldbook.customApiProvider).toBe('deepseek');
+    expect(store.settings.worldbook.startChunkIndex).toBe(5);
 
     store.patch({ worldbook: { chunkSize: 22000 } });
     expect(store.settings.worldbook.chunkSize).toBe(22000);

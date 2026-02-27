@@ -146,6 +146,7 @@ export const useWorldbookStore = defineStore('novelToST/worldbook', () => {
     if (status.value === 'running') {
       return;
     }
+    errorMessage.value = null;
     status.value = 'running';
     if (stats.value.startTime === null) {
       stats.value.startTime = Date.now();
@@ -253,6 +254,15 @@ export const useWorldbookStore = defineStore('novelToST/worldbook', () => {
     syncChunkStats();
   };
 
+  const replaceChunks = (nextChunks: MemoryChunk[]) => {
+    chunks.value = nextChunks.map((chunk, index) => normalizeHydratedChunk(chunk, index));
+    if (currentChunkId.value && !chunks.value.some((chunk) => chunk.id === currentChunkId.value)) {
+      currentChunkId.value = null;
+    }
+    stats.value.generatedEntries = generatedEntries.value.length;
+    syncChunkStats();
+  };
+
   const appendGeneratedEntries = (entries: WorldbookEntry[]) => {
     if (entries.length === 0) {
       return;
@@ -352,6 +362,7 @@ export const useWorldbookStore = defineStore('novelToST/worldbook', () => {
     markChunkProcessing,
     markChunkSuccess,
     markChunkFailure,
+    replaceChunks,
     replaceGeneratedEntries,
     appendGeneratedEntries,
     setCategories,

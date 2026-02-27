@@ -24,6 +24,7 @@ export type NovelWorldbookSettings = {
   parallelEnabled: boolean;
   parallelConcurrency: number;
   parallelMode: WorldbookParallelMode;
+  startChunkIndex: number;
   useTavernApi: boolean;
   customMergePrompt: string;
   categoryLightSettings: Record<string, boolean> | null;

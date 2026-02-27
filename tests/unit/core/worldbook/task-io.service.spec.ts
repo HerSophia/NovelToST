@@ -101,6 +101,7 @@ describe('worldbook/task-io.service', () => {
 
     expect(restored.chunkSize).toBe(current.chunkSize);
     expect(restored.customApiProvider).toBe(current.customApiProvider);
+    expect(restored.startChunkIndex).toBe(current.startChunkIndex);
   });
 
   it('should accept plain worldbook settings JSON and apply defaults', () => {
@@ -108,12 +109,14 @@ describe('worldbook/task-io.service', () => {
       JSON.stringify({
         chunkSize: 19999,
         parallelEnabled: false,
+        startChunkIndex: 4,
       }),
     );
 
     expect(restored.chunkSize).toBe(19999);
     expect(restored.parallelEnabled).toBe(false);
     expect(restored.parallelConcurrency).toBe(3);
+    expect(restored.startChunkIndex).toBe(4);
   });
 
   it('should throw error for invalid worldbook settings payload', () => {

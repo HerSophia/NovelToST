@@ -1,4 +1,10 @@
-import { callAPI, callCustomAPI, callSillyTavernAPI } from '@/novelToST/core/worldbook/api.service';
+import {
+  callAPI,
+  callCustomAPI,
+  callSillyTavernAPI,
+  fetchCustomApiModels,
+  quickTestWorldbookApi,
+} from '@/novelToST/core/worldbook/api.service';
 import { useNovelSettingsStore } from '@/novelToST/stores/settings.store';
 import type { NovelWorldbookSettings } from '@/novelToST/types';
 
@@ -13,6 +19,16 @@ function makeWorldbookSettings(overrides: Partial<NovelWorldbookSettings> = {}):
   return {
     ...settingsStore.settings.worldbook,
   };
+}
+
+function createFetchMock(responseFactory: () => Response | Promise<Response>) {
+  return vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+    return responseFactory();
+  });
+}
+
+function getFirstFetchCall(fetchMock: ReturnType<typeof createFetchMock>): [RequestInfo | URL, RequestInit?] {
+  return fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit?];
 }
 
 describe('worldbook/api.service', () => {
@@ -52,7 +68,7 @@ describe('worldbook/api.service', () => {
   });
 
   it('should parse openai-compatible custom API response', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = createFetchMock(() =>
       new Response(JSON.stringify({ choices: [{ message: { content: 'custom-ok' } }] }), {
         status: 200,
         headers: {
@@ -78,11 +94,94 @@ describe('worldbook/api.service', () => {
     expect(result.text).toBe('custom-ok');
     expect(result.outputTokens).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/chat/completions');
+    const [requestUrl] = getFirstFetchCall(fetchMock);
+    expect(String(requestUrl)).toContain('/chat/completions');
+  });
+
+  it('should fetch model list from openai-compatible endpoint', async () => {
+    const fetchMock = createFetchMock(() =>
+      new Response(JSON.stringify({ data: [{ id: 'qwen-max' }, { id: 'deepseek-chat' }] }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+    (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await fetchCustomApiModels(
+      makeWorldbookSettings({
+        useTavernApi: false,
+        customApiProvider: 'openai-compatible',
+        customApiEndpoint: 'http://127.0.0.1:5000/v1',
+        customApiKey: 'token',
+      }),
+    );
+
+    expect(result.provider).toBe('openai-compatible');
+    expect(result.models).toEqual(['qwen-max', 'deepseek-chat']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [requestUrl, requestInit] = getFirstFetchCall(fetchMock);
+    expect(String(requestUrl)).toContain('/v1/models');
+    expect(requestInit).toMatchObject({ method: 'GET' });
+  });
+
+  it('should normalize gemini model names when fetching model list', async () => {
+    const fetchMock = createFetchMock(() =>
+      new Response(JSON.stringify({
+        models: [
+          { name: 'models/gemini-2.5-flash' },
+          { name: 'models/gemini-2.5-pro' },
+        ],
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+    (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await fetchCustomApiModels(
+      makeWorldbookSettings({
+        useTavernApi: false,
+        customApiProvider: 'gemini',
+        customApiKey: 'gemini-token',
+      }),
+    );
+
+    expect(result.provider).toBe('gemini');
+    expect(result.models).toEqual(['gemini-2.5-flash', 'gemini-2.5-pro']);
+    const [requestUrl] = getFirstFetchCall(fetchMock);
+    expect(String(requestUrl)).toContain('v1beta/models?key=gemini-token');
+  });
+
+  it('should run quick API test and return elapsed time', async () => {
+    const fetchMock = createFetchMock(() =>
+      new Response(JSON.stringify({ choices: [{ message: { content: 'OK' } }] }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+    (globalThis as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await quickTestWorldbookApi(makeWorldbookSettings({
+      useTavernApi: false,
+      customApiProvider: 'openai-compatible',
+      customApiEndpoint: 'http://127.0.0.1:5000/v1',
+      customApiModel: 'test-model',
+      apiTimeout: 5000,
+    }));
+
+    expect(result.provider).toBe('openai-compatible');
+    expect(result.responseText).toBe('OK');
+    expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
   });
 
   it('should classify rate limit error from custom API', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = createFetchMock(() =>
       new Response('rate limit exceeded', {
         status: 429,
         statusText: 'Too Many Requests',
@@ -108,7 +207,7 @@ describe('worldbook/api.service', () => {
   });
 
   it('should classify JSON parse error when response body is invalid JSON', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = createFetchMock(() =>
       new Response('{not-json', {
         status: 200,
         headers: {

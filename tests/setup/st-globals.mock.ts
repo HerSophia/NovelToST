@@ -5,6 +5,15 @@ const createDisplayedMessage = () => ({
   text: () => '',
 });
 
+const tavernEvents = {
+  CHAT_CHANGED: 'CHAT_CHANGED',
+  CHARACTER_MESSAGE_RENDERED: 'CHARACTER_MESSAGE_RENDERED',
+  MESSAGE_EDITED: 'MESSAGE_EDITED',
+  MESSAGE_DELETED: 'MESSAGE_DELETED',
+  MORE_MESSAGES_LOADED: 'MORE_MESSAGES_LOADED',
+  STREAM_TOKEN_RECEIVED: 'STREAM_TOKEN_RECEIVED',
+} as const;
+
 export const stMocks = {
   getLastMessageId: vi.fn<() => number>(),
   getChatMessages: vi.fn<(range: string | number, options?: { role?: ChatMessage['role'] | 'all' }) => ChatMessage[]>(),
@@ -14,9 +23,22 @@ export const stMocks = {
   getScriptId: vi.fn<() => string>(),
   getVariables: vi.fn<() => Record<string, unknown>>(),
   replaceScriptButtons: vi.fn<(buttons: ScriptButton[]) => void>(),
-  eventOn: vi.fn<(eventName: string, callback: () => void) => EventOnReturn>(),
+  eventOn: vi.fn<(eventName: string, callback: (...args: any[]) => void) => EventOnReturn>(),
   getButtonEvent: vi.fn<(name: string) => string>(),
-  insertOrAssignVariables: vi.fn<(variables: Record<string, unknown>, option: VariableOption) => Record<string, unknown>>(),
+  insertOrAssignVariables: vi.fn<
+    (variables: Record<string, unknown>, option: VariableOption) => Record<string, unknown>
+  >(),
+  replaceScriptInfo: vi.fn<(markdown: string) => void>(),
+  getTavernHelperVersion: vi.fn<() => Promise<string>>(),
+  eventEmit: vi.fn<(eventName: string, ...args: unknown[]) => void>(),
+  eventMakeFirst: vi.fn<(eventName: string, callback: (...args: any[]) => void) => EventOnReturn>(),
+  substitudeMacros: vi.fn<(text: string) => string>(),
+  errorCatched: vi.fn<(fn: (...args: any[]) => any) => (...args: any[]) => any>(),
+  SillyTavern: {
+    getCurrentChatId: vi.fn<() => unknown>(),
+    chat: [] as unknown[],
+  },
+  tavern_events: { ...tavernEvents },
   toastr: {
     success: vi.fn<(message?: string, title?: string) => void>(),
     warning: vi.fn<(message?: string, title?: string) => void>(),
@@ -40,6 +62,14 @@ export function installSTGlobalMocks(): void {
   globalRef.eventOn = stMocks.eventOn;
   globalRef.getButtonEvent = stMocks.getButtonEvent;
   globalRef.insertOrAssignVariables = stMocks.insertOrAssignVariables;
+  globalRef.replaceScriptInfo = stMocks.replaceScriptInfo;
+  globalRef.getTavernHelperVersion = stMocks.getTavernHelperVersion;
+  globalRef.eventEmit = stMocks.eventEmit;
+  globalRef.eventMakeFirst = stMocks.eventMakeFirst;
+  globalRef.substitudeMacros = stMocks.substitudeMacros;
+  globalRef.errorCatched = stMocks.errorCatched;
+  globalRef.SillyTavern = stMocks.SillyTavern;
+  globalRef.tavern_events = stMocks.tavern_events;
   globalRef.toastr = stMocks.toastr;
 }
 
@@ -75,6 +105,26 @@ export function resetSTGlobalMockState(): void {
 
   stMocks.insertOrAssignVariables.mockReset();
   stMocks.insertOrAssignVariables.mockImplementation((variables: Record<string, unknown>) => variables);
+
+  stMocks.replaceScriptInfo.mockReset();
+
+  stMocks.getTavernHelperVersion.mockReset();
+  stMocks.getTavernHelperVersion.mockResolvedValue('0.0.0');
+
+  stMocks.eventEmit.mockReset();
+
+  stMocks.eventMakeFirst.mockReset();
+  stMocks.eventMakeFirst.mockImplementation(() => ({ stop: vi.fn() }));
+
+  stMocks.substitudeMacros.mockReset();
+  stMocks.substitudeMacros.mockImplementation(text => text);
+
+  stMocks.errorCatched.mockReset();
+  stMocks.errorCatched.mockImplementation(fn => fn);
+
+  stMocks.SillyTavern.getCurrentChatId.mockReset();
+  stMocks.SillyTavern.getCurrentChatId.mockReturnValue('test-chat-id');
+  stMocks.SillyTavern.chat = [];
 
   stMocks.toastr.success.mockReset();
   stMocks.toastr.warning.mockReset();
