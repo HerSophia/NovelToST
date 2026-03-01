@@ -28,12 +28,14 @@
 
 1. `pnpm install --frozen-lockfile`
 2. `pnpm lint`
-3. `pnpm build:dev`
+3. `pnpm typecheck`
+4. `pnpm test --run`
+5. `pnpm build:dev`
 
 目标：
 
 - 在合并前尽早发现问题
-- 保证基础可构建与静态检查通过
+- 保证静态检查、类型检查、测试与构建均可通过
 
 ### 2.2 `build.yaml`（交付构建）
 
@@ -81,3 +83,4 @@
 ## 6. 变更记录
 
 - 2026-02-24：升级为 v2，CI/CD 缩减为 test + build 两条主流程，移除模板同步与依赖自动升级流程。
+- 2026-03-01：同步 test 工作流口径为 `lint + typecheck + test --run + build:dev`。

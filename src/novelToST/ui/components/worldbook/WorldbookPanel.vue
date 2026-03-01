@@ -1,6 +1,12 @@
 <template>
   <BaseCard title="TXT 转世界书" collapsible :collapsed="collapsed" @update:collapsed="emit('update:collapsed', $event)">
     <template #actions>
+      <HelpTriggerButton
+        topic="worldbook"
+        title="查看 TXT 转世界书帮助"
+        @trigger="emit('open-help', 'worldbook')"
+      />
+
       <span
         class="rounded-full px-2 py-0.5 text-[10px] font-medium"
         :class="statusBadgeClass"
@@ -207,7 +213,9 @@ import type {
   WorldbookAliasMergeMode,
   WorldbookMergeMode,
 } from '../../../core/worldbook/merge.service';
+import type { HelpTopicId } from '../../help/help-topics';
 import type { WorldbookEntry } from '../../../types/worldbook';
+import HelpTriggerButton from '../help/HelpTriggerButton.vue';
 
 defineProps<{
   collapsed?: boolean;
@@ -215,6 +223,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:collapsed': [value: boolean];
+  'open-help': [topic: HelpTopicId];
 }>();
 
 const ctrl = useWorldbookControl();

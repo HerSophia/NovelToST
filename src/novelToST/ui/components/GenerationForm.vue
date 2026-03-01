@@ -1,5 +1,18 @@
 <template>
   <BaseCard title="生成设置" collapsible :collapsed="collapsed" @update:collapsed="emit('update:collapsed', $event)">
+    <template #actions>
+      <HelpTriggerButton
+        topic="generate"
+        title="查看生成流程帮助"
+        @trigger="emit('open-help', 'generate')"
+      />
+      <HelpTriggerButton
+        topic="advanced"
+        title="查看高级参数帮助"
+        @trigger="emit('open-help', 'advanced')"
+      />
+    </template>
+
     <div class="grid gap-4">
       <BaseInput
         v-model.number="settings.totalChapters"
@@ -163,6 +176,8 @@ import BaseCard from '../base/BaseCard.vue';
 import BaseCheckbox from '../base/BaseCheckbox.vue';
 import BaseInput from '../base/BaseInput.vue';
 import BaseTextarea from '../base/BaseTextarea.vue';
+import HelpTriggerButton from './help/HelpTriggerButton.vue';
+import type { HelpTopicId } from '../help/help-topics';
 
 defineProps<{
   collapsed?: boolean;
@@ -170,6 +185,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:collapsed': [value: boolean];
+  'open-help': [topic: HelpTopicId];
 }>();
 
 const settingsStore = useNovelSettingsStore();

@@ -75,12 +75,14 @@ import 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/酒馆�
 
 **`test.yaml`**
 
-- 在 PR 与主分支 push 时执行 `lint + build:dev` 作为质量门禁.
+- 在 PR 与主分支 push 时执行 `lint + typecheck + test --run + build:dev` 作为质量门禁.
 
 **`build.yaml`**
 
 - 在主分支 push 时自动构建 `dist` 并提交构建产物;
 - 自动将 `tavern_sync.yaml` 中[已经配置好了的角色卡、世界书或预设](https://stagedog.github.io/青空莉/工具经验/实时编写角色卡、世界书或预设/)打包成可以被酒馆导入的文件.
+
+> 环境基线：Node `24`、pnpm `10`、`pnpm install --frozen-lockfile`.
 
 ### 打包冲突问题
 

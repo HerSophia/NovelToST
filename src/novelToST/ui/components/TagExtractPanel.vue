@@ -7,6 +7,12 @@
     @update:collapsed="emit('update:collapsed', $event)"
   >
     <template #actions>
+      <HelpTriggerButton
+        topic="extract"
+        title="查看标签提取帮助"
+        @trigger="emit('open-help', 'extract')"
+      />
+
       <BaseButton variant="ghost" size="sm" @click.stop="emit('refresh-preview')">
         <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -53,6 +59,8 @@ import BaseButton from '../base/BaseButton.vue';
 import BaseCard from '../base/BaseCard.vue';
 import BaseInput from '../base/BaseInput.vue';
 import BaseSelect from '../base/BaseSelect.vue';
+import HelpTriggerButton from './help/HelpTriggerButton.vue';
+import type { HelpTopicId } from '../help/help-topics';
 
 defineProps<{
   collapsed?: boolean;
@@ -61,6 +69,7 @@ defineProps<{
 const emit = defineEmits<{
   'refresh-preview': [];
   'update:collapsed': [value: boolean];
+  'open-help': [topic: HelpTopicId];
 }>();
 
 const settingsStore = useNovelSettingsStore();

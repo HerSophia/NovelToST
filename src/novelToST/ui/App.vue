@@ -86,23 +86,35 @@
           <div class="overflow-hidden border-t border-white/[0.06] bg-transparent pt-2 sm:pt-3">
             <main class="grid gap-3 sm:gap-4 lg:grid-cols-2">
               <!-- Worldbook Panel - Full width above the grid -->
-              <WorldbookPanel v-model:collapsed="panelCollapsed.worldbook" class="lg:col-span-2" data-panel="worldbook" />
+              <WorldbookPanel
+                v-model:collapsed="panelCollapsed.worldbook"
+                class="lg:col-span-2"
+                data-panel="worldbook"
+                @open-help="openHelp"
+              />
 
-              <GenerationForm v-model:collapsed="panelCollapsed.generation" />
+              <GenerationForm v-model:collapsed="panelCollapsed.generation" @open-help="openHelp" />
               <div class="flex flex-col gap-3 sm:gap-4">
-                <ExportPanel v-model:collapsed="panelCollapsed.export" @export-txt="doExportTXT()" @export-json="doExportJSON()" />
-                <TagExtractPanel v-model:collapsed="panelCollapsed.tags" @refresh-preview="refreshPreview" />
+                <ExportPanel
+                  v-model:collapsed="panelCollapsed.export"
+                  @export-txt="doExportTXT()"
+                  @export-json="doExportJSON()"
+                  @open-help="openHelp"
+                />
+                <TagExtractPanel v-model:collapsed="panelCollapsed.tags" @refresh-preview="refreshPreview" @open-help="openHelp" />
                 <HelpPanel v-model:collapsed="panelCollapsed.help" />
               </div>
             </main>
           </div>
 
+        </div>
       </div>
     </div>
   </div>
-  </div>
 
   <!-- Modals -->
+  <HelpModal v-model="showHelpModal" v-model:topic="activeHelpTopic" />
+
   <ConfirmStopModal
     v-model="uiStore.showStopConfirmModal"
     title="确认停止"
@@ -139,7 +151,9 @@ import GenerationForm from './components/GenerationForm.vue';
 import StatusBar from './components/StatusBar.vue';
 import HelpPanel from './components/HelpPanel.vue';
 import TagExtractPanel from './components/TagExtractPanel.vue';
+import HelpModal from './components/help/HelpModal.vue';
 import WorldbookPanel from './components/worldbook/WorldbookPanel.vue';
+import type { HelpTopicId } from './help/help-topics';
 
 const generationStore = useGenerationStore();
 const uiStore = useUiStore();
@@ -177,6 +191,9 @@ const panelCollapsed = reactive({
   tags: readBooleanPreference(`${STORAGE_PREFIX}.panel.tags`, true),
   help: readBooleanPreference(`${STORAGE_PREFIX}.panel.help`, true),
 });
+
+const showHelpModal = ref(false);
+const activeHelpTopic = ref<HelpTopicId>('generate');
 
 watch(isGlobalCollapsed, value => {
   saveBooleanPreference(`${STORAGE_PREFIX}.globalCollapsed`, value);
@@ -219,6 +236,11 @@ watch(
 
 const toggleGlobalCollapse = () => {
   isGlobalCollapsed.value = !isGlobalCollapsed.value;
+};
+
+const openHelp = (topic: HelpTopicId) => {
+  activeHelpTopic.value = topic;
+  showHelpModal.value = true;
 };
 
 const handleStopConfirm = () => {

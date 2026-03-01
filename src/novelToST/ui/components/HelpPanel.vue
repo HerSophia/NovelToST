@@ -7,6 +7,13 @@
     @update:collapsed="emit('update:collapsed', $event)"
   >
     <div class="space-y-3 text-xs leading-relaxed text-slate-300">
+      <div class="rounded border border-blue-400/25 bg-blue-500/10 px-2.5 py-2 text-slate-200">
+        <p class="font-medium text-blue-200">提示</p>
+        <p class="mt-1">
+          各面板标题右侧的 <span class="font-semibold">❓</span> 为上下文即时帮助；本面板用于查看完整指南与排障清单。
+        </p>
+      </div>
+
       <section class="space-y-1.5">
         <h4 class="text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase">快速上手</h4>
         <ol class="list-decimal space-y-1 pl-4 text-slate-300">

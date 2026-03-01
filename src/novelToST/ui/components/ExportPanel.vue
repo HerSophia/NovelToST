@@ -6,6 +6,14 @@
     :default-collapsed="true"
     @update:collapsed="emit('update:collapsed', $event)"
   >
+    <template #actions>
+      <HelpTriggerButton
+        topic="export"
+        title="查看导出帮助"
+        @trigger="emit('open-help', 'export')"
+      />
+    </template>
+
     <div class="grid gap-4">
       <BaseCheckbox v-model="settings.exportAll">
         导出全部楼层
@@ -68,6 +76,8 @@ import BaseButton from '../base/BaseButton.vue';
 import BaseCard from '../base/BaseCard.vue';
 import BaseCheckbox from '../base/BaseCheckbox.vue';
 import BaseInput from '../base/BaseInput.vue';
+import HelpTriggerButton from './help/HelpTriggerButton.vue';
+import type { HelpTopicId } from '../help/help-topics';
 
 defineProps<{
   collapsed?: boolean;
@@ -77,6 +87,7 @@ const emit = defineEmits<{
   'export-txt': [];
   'export-json': [];
   'update:collapsed': [value: boolean];
+  'open-help': [topic: HelpTopicId];
 }>();
 
 const settingsStore = useNovelSettingsStore();
