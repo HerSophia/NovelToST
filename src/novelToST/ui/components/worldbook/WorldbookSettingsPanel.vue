@@ -10,30 +10,26 @@
           </BaseCheckbox>
 
           <div v-if="!wb.useTavernApi" class="grid gap-3">
-            <BaseSelect v-model="wb.customApiProvider" label="API 提供商">
-              <option value="openai">OpenAI</option>
-              <option value="openai-compatible">OpenAI 兼容</option>
-              <option value="gemini">Gemini</option>
-              <option value="gemini-proxy">Gemini (Proxy)</option>
-              <option value="deepseek">DeepSeek</option>
-            </BaseSelect>
+            <BaseDropdownSelect
+              v-model="wb.customApiProvider"
+              label="API 提供商"
+              :options="customApiProviderOptions"
+              data-worldbook-settings-provider-select
+              list-data-attr-name="data-worldbook-settings-provider-list"
+              item-data-attr-name="data-worldbook-settings-provider-option"
+            />
             <BaseInput v-model="wb.customApiEndpoint" label="API 端点" placeholder="https://..." />
             <BaseInput v-model="wb.customApiModel" label="模型名称" placeholder="gemini-2.5-flash" />
-            <BaseSelect
+            <BaseDropdownSelect
               v-if="modelOptions.length > 0"
-              :model-value="wb.customApiModel"
+              v-model="wb.customApiModel"
+              :options="modelQuickSelectOptions"
               label="可用模型（快速选择）"
               hint="从拉取结果中选择后会同步覆盖模型名称"
-              @update:model-value="wb.customApiModel = String($event)"
-            >
-              <option
-                v-for="model in modelOptions"
-                :key="model"
-                :value="model"
-              >
-                {{ model }}
-              </option>
-            </BaseSelect>
+              data-worldbook-settings-model-select
+              list-data-attr-name="data-worldbook-settings-model-list"
+              item-data-attr-name="data-worldbook-settings-model-option"
+            />
             <BaseInput v-model="wb.customApiKey" label="API Key" type="password" placeholder="sk-..." />
 
             <div class="flex flex-wrap items-center gap-2">
@@ -66,11 +62,14 @@
         <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">处理设置</p>
         <div class="grid gap-3 sm:grid-cols-2">
           <BaseInput v-model.number="wb.chunkSize" label="切块大小 (字符)" type="number" min="1000" hint="推荐 10000~20000" />
-          <BaseSelect v-model="wb.language" label="输出语言">
-            <option value="zh">中文</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-          </BaseSelect>
+          <BaseDropdownSelect
+            v-model="wb.language"
+            label="输出语言"
+            :options="languageOptions"
+            data-worldbook-settings-language-select
+            list-data-attr-name="data-worldbook-settings-language-list"
+            item-data-attr-name="data-worldbook-settings-language-option"
+          />
         </div>
         <BaseInput
           v-model.number="wb.startChunkIndex"
@@ -87,10 +86,14 @@
           </BaseCheckbox>
           <div v-if="wb.parallelEnabled" class="grid gap-3 sm:grid-cols-2">
             <BaseInput v-model.number="wb.parallelConcurrency" label="并发数" type="number" min="1" max="10" />
-            <BaseSelect v-model="wb.parallelMode" label="并行模式">
-              <option value="independent">独立模式</option>
-              <option value="batch">批次模式</option>
-            </BaseSelect>
+            <BaseDropdownSelect
+              v-model="wb.parallelMode"
+              label="并行模式"
+              :options="parallelModeOptions"
+              data-worldbook-settings-parallel-mode-select
+              list-data-attr-name="data-worldbook-settings-parallel-mode-list"
+              item-data-attr-name="data-worldbook-settings-parallel-mode-option"
+            />
           </div>
         </div>
       </div>
@@ -167,8 +170,9 @@ import BaseButton from '../../base/BaseButton.vue';
 import BaseCard from '../../base/BaseCard.vue';
 import BaseCheckbox from '../../base/BaseCheckbox.vue';
 import BaseInput from '../../base/BaseInput.vue';
-import BaseSelect from '../../base/BaseSelect.vue';
+import BaseDropdownSelect from '../../base/BaseDropdownSelect.vue';
 import BaseTextarea from '../../base/BaseTextarea.vue';
+import type { WorldbookParallelMode } from '../../../types';
 
 type ApiStatusType = 'idle' | 'loading' | 'success' | 'error';
 
@@ -207,6 +211,32 @@ const modelOptions = computed(() => props.modelOptions);
 const modelFetchLoading = computed(() => props.modelFetchLoading);
 const apiTestLoading = computed(() => props.apiTestLoading);
 const modelStatusMessage = computed(() => props.modelStatusMessage);
+const customApiProviderOptions: Array<{ value: string; label: string }> = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'openai-compatible', label: 'OpenAI 兼容' },
+  { value: 'gemini', label: 'Gemini' },
+  { value: 'gemini-proxy', label: 'Gemini (Proxy)' },
+  { value: 'deepseek', label: 'DeepSeek' },
+];
+
+const modelQuickSelectOptions = computed<Array<{ value: string; label: string }>>(() => {
+  return modelOptions.value.map(model => ({
+    value: model,
+    label: model,
+  }));
+});
+
+const languageOptions: Array<{ value: string; label: string }> = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+];
+
+const parallelModeOptions: Array<{ value: WorldbookParallelMode; label: string }> = [
+  { value: 'independent', label: '独立模式' },
+  { value: 'batch', label: '批次模式' },
+];
+
 const statusClass = computed(() => {
   switch (props.modelStatusType) {
     case 'success':

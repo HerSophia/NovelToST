@@ -11,6 +11,19 @@ export type WorldbookEntryConfig = {
   autoIncrementOrder?: boolean;
 };
 
+export type NovelLLMConfigPreset = {
+  id: string;
+  name: string;
+  useTavernApi: boolean;
+  apiTimeout: number;
+  customApiProvider: string;
+  customApiEndpoint: string;
+  customApiModel: string;
+  customApiKey: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type NovelWorldbookSettings = {
   chunkSize: number;
   enablePlotOutline: boolean;
@@ -44,6 +57,8 @@ export type NovelWorldbookSettings = {
   allowRecursion: boolean;
   filterResponseTags: string;
   debugMode: boolean;
+  llmPresets: NovelLLMConfigPreset[];
+  activeLLMPresetId: string | null;
 };
 
 export type NovelSettings = {

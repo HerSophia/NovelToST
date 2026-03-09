@@ -1,0 +1,2 @@
+export const MAX_OUTLINE_SESSIONS = 20;
+export const MAX_OUTLINE_SNAPSHOTS_PER_SESSION = 20;

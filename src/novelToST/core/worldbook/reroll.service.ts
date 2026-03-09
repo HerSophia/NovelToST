@@ -164,7 +164,7 @@ export function buildEntryRerollPrompt(options: BuildEntryRerollPromptOptions): 
   }
 
   prompt += getLanguagePrefix(options.settings);
-  prompt += '你是一个专业的小说世界书条目生成助手。请根据以下原文内容，专门重新生成指定的条目。\n';
+  prompt += '你是小说世界书条目生成助手。请根据以下原文内容，重新生成指定的条目。\n';
   prompt += '\n【任务说明】\n';
   prompt += `- 只需要生成一个条目：分类="${options.category}"，条目名称="${options.entryName}"\n`;
   prompt += '- 请基于原文内容重新分析并生成该条目的信息\n';

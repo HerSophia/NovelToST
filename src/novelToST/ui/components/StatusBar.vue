@@ -144,11 +144,11 @@ const statusText = computed(() => {
     case 'paused':
       return '已暂停';
     case 'stopping':
-      return '停止中';
+      return '正在停下…';
     case 'completed':
       return '已完成';
     case 'error':
-      return '错误';
+      return '出错了';
     default:
       return '空闲';
   }

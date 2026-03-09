@@ -64,12 +64,23 @@ export function useGenerationControl() {
       uiStore.setStatusMessage('运行中');
       generationStore.touchRuntimeNow();
 
+      const warnedFallbackChapters = new Set<number>();
+
       const loopResult = await startLoop({
         onAutoSave: async () => {
           doExportTXT({ silent: true });
         },
         onChapterFailed: async (chapter, retry, message) => {
           console.warn(`[novelToST] 第 ${chapter} 章失败（第 ${retry} 次）: ${message}`);
+        },
+        onChapterPromptWarning: async (chapter, warningMessage) => {
+          if (warnedFallbackChapters.has(chapter)) {
+            return;
+          }
+
+          warnedFallbackChapters.add(chapter);
+          console.warn(`[novelToST] 第 ${chapter} 章缺少细纲，已启用回退模式: ${warningMessage}`);
+          toastr.warning('本章缺少细纲，已启用回退模式继续生成');
         },
       });
 
@@ -84,7 +95,7 @@ export function useGenerationControl() {
       if (loopResult.completed) {
         generationStore.markCompleted();
         uiStore.setStatusMessage('已完成');
-        toastr.success('自动续写完成');
+        toastr.success('全部章节生成完成！');
         generationStore.touchRuntimeNow();
         doExportTXT({ silent: false });
         return;
@@ -120,7 +131,7 @@ export function useGenerationControl() {
   const stop = () => {
     generationStore.requestStop();
     uiStore.setStatusMessage('停止中');
-    toastr.warning('已请求停止，等待当前步骤结束');
+    toastr.warning('正在停止，会在当前章节安全完成后停下');
     generationStore.touchRuntimeNow();
   };
 
@@ -134,7 +145,7 @@ export function useGenerationControl() {
     generationStore.resetProgress();
     exportStore.clearExportState();
     uiStore.setStatusMessage('进度已重置');
-    toastr.info('已重置生成进度');
+    toastr.info('进度已清零，可以重新开始');
     generationStore.touchRuntimeNow();
   };
 

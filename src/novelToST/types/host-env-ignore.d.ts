@@ -68,6 +68,27 @@ declare function insertOrAssignVariables(
   option?: VariableOption,
 ): Record<string, unknown>;
 
+declare function updateVariablesWith(
+  updater: (variables: Record<string, unknown>) => Record<string, unknown>,
+  option?: VariableOption,
+): Record<string, unknown>;
+
+declare function updateVariablesWith(
+  updater: (variables: Record<string, unknown>) => Promise<Record<string, unknown>>,
+  option?: VariableOption,
+): Promise<Record<string, unknown>>;
+
+declare function generateRaw(config: {
+  user_input?: string;
+  should_silence?: boolean;
+  max_chat_history?: number | 'all';
+  [key: string]: unknown;
+}): Promise<string>;
+
+declare function getLoadedPresetName(): string;
+declare function getPreset(preset_name: string): unknown;
+declare function getCurrentCharacterName(): string | null;
+
 declare function replaceScriptButtons(buttons: ScriptButton[]): void;
 
 declare function eventOn(eventName: string, callback: (...args: any[]) => void): EventOnReturn;
@@ -113,3 +134,46 @@ declare const SillyTavern: {
   };
   [key: string]: unknown;
 };
+
+declare type HostWorldbookStrategy = {
+  type?: unknown;
+  keys?: unknown;
+  [key: string]: unknown;
+};
+
+declare type HostWorldbookEntry = {
+  uid?: unknown;
+  name?: unknown;
+  enabled?: unknown;
+  content?: unknown;
+  strategy?: HostWorldbookStrategy;
+  [key: string]: unknown;
+};
+
+declare type HostCharWorldbooks = {
+  primary?: unknown;
+  additional?: unknown;
+  [key: string]: unknown;
+};
+
+declare function getWorldbookNames(): string[];
+
+declare function getGlobalWorldbookNames(): string[];
+
+declare function getCharWorldbookNames(character_name: 'current' | string): HostCharWorldbooks;
+
+declare function getWorldbook(worldbook_name: string): Promise<HostWorldbookEntry[]>;
+
+declare function createWorldbookEntries(
+  worldbook_name: string,
+  new_entries: Array<Record<string, unknown>>,
+  options?: {
+    render?: 'debounced' | 'immediate';
+    [key: string]: unknown;
+  },
+): Promise<{ worldbook: HostWorldbookEntry[]; new_entries: HostWorldbookEntry[] }>;
+
+declare function getChatWorldbookName(chat_name: 'current'): string | null;
+
+declare function rebindChatWorldbook(chat_name: 'current', worldbook_name: string): Promise<void>;
+

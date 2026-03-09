@@ -3,6 +3,7 @@
     :model-value="modelValue"
     class="flex items-center justify-center"
     content-class="w-[min(540px,92vw)] rounded-xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-xl"
+    :teleport-to="teleportTo"
     @update:model-value="value => emit('update:modelValue', value)"
   >
     <div class="mb-2 text-base font-semibold">{{ title }}</div>
@@ -33,10 +34,12 @@ withDefaults(
     description: string;
     confirmText?: string;
     hideCancel?: boolean;
+    teleportTo?: string | false;
   }>(),
   {
     confirmText: '确认',
     hideCancel: false,
+    teleportTo: 'body',
   },
 );
 

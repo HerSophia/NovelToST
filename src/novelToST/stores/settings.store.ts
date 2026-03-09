@@ -11,6 +11,21 @@ export const WorldbookEntryConfigSchema = z.object({
   autoIncrementOrder: z.boolean().optional(),
 });
 
+export const LLMConfigPresetSchema = z
+  .object({
+    id: z.string().min(1).default('preset-default'),
+    name: z.string().min(1).default('未命名预设'),
+    useTavernApi: z.boolean().default(true),
+    apiTimeout: z.number().int().min(1000).default(120000),
+    customApiProvider: z.string().min(1).default('gemini'),
+    customApiKey: z.string().default(''),
+    customApiEndpoint: z.string().default(''),
+    customApiModel: z.string().default('gemini-2.5-flash'),
+    createdAt: z.string().default(''),
+    updatedAt: z.string().default(''),
+  })
+  .prefault({});
+
 export const WorldbookSettingsSchema = z
   .object({
     chunkSize: z.number().int().min(1).default(15000),
@@ -45,6 +60,8 @@ export const WorldbookSettingsSchema = z
     allowRecursion: z.boolean().default(false),
     filterResponseTags: z.string().default('thinking,/think'),
     debugMode: z.boolean().default(false),
+    llmPresets: z.array(LLMConfigPresetSchema).default([]),
+    activeLLMPresetId: z.string().nullable().default(null),
   })
   .prefault({});
 
@@ -122,6 +139,8 @@ const LEGACY_WORLDBOOK_KEYS = [
   'allowRecursion',
   'filterResponseTags',
   'debugMode',
+  'llmPresets',
+  'activeLLMPresetId',
 ] as const satisfies ReadonlyArray<keyof NovelWorldbookSettings>;
 
 const scriptVariableOption = {

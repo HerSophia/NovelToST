@@ -21,10 +21,14 @@
     </template>
 
     <div class="grid gap-4">
-      <BaseSelect v-model="settings.extractMode" label="提取模式">
-        <option value="all">全部内容（无过滤）</option>
-        <option value="tags">标签提取模式</option>
-      </BaseSelect>
+      <BaseDropdownSelect
+        v-model="settings.extractMode"
+        label="提取模式"
+        :options="extractModeOptions"
+        data-tag-extract-mode-select
+        list-data-attr-name="data-tag-extract-mode-list"
+        item-data-attr-name="data-tag-extract-mode-option"
+      />
 
       <div v-if="settings.extractMode === 'tags'" class="grid gap-4 sm:grid-cols-2">
         <BaseInput
@@ -33,11 +37,14 @@
           placeholder="例如: content detail 正文"
           hint="使用空格或逗号分隔多个标签"
         />
-        <BaseSelect v-model="separatorToken" label="内容分隔符">
-          <option value="\\n\\n">双换行 (段落)</option>
-          <option value="\\n">单换行</option>
-          <option value="">无分隔</option>
-        </BaseSelect>
+        <BaseDropdownSelect
+          v-model="separatorToken"
+          label="内容分隔符"
+          :options="separatorTokenOptions"
+          data-tag-extract-separator-select
+          list-data-attr-name="data-tag-extract-separator-list"
+          item-data-attr-name="data-tag-extract-separator-option"
+        />
       </div>
 
       <div class="mt-2">
@@ -58,9 +65,10 @@ import { useNovelSettingsStore } from '../../stores/settings.store';
 import BaseButton from '../base/BaseButton.vue';
 import BaseCard from '../base/BaseCard.vue';
 import BaseInput from '../base/BaseInput.vue';
-import BaseSelect from '../base/BaseSelect.vue';
+import BaseDropdownSelect from '../base/BaseDropdownSelect.vue';
 import HelpTriggerButton from './help/HelpTriggerButton.vue';
 import type { HelpTopicId } from '../help/help-topics';
+import type { ExtractMode } from '../../types';
 
 defineProps<{
   collapsed?: boolean;
@@ -77,6 +85,17 @@ const exportStore = useExportStore();
 
 const { settings } = storeToRefs(settingsStore);
 const { latestPreview: preview } = storeToRefs(exportStore);
+
+const extractModeOptions: Array<{ value: ExtractMode; label: string }> = [
+  { value: 'all', label: '全部内容（无过滤）' },
+  { value: 'tags', label: '标签提取模式' },
+];
+
+const separatorTokenOptions: Array<{ value: string; label: string }> = [
+  { value: '\\n\\n', label: '双换行 (段落)' },
+  { value: '\\n', label: '单换行' },
+  { value: '', label: '无分隔' },
+];
 
 const separatorToken = computed({
   get: () => settings.value.tagSeparator.replaceAll('\n', '\\n'),

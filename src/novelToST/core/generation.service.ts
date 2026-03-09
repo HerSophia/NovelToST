@@ -1,7 +1,10 @@
 import type { NovelSettings } from '../types';
 import { sleep, waitForReplyStageSettled, waitForResumeOrAbort, waitForSendStageSettled } from './guard.service';
 import { useGenerationStore } from '../stores/generation.store';
+import { useFoundationStore } from '../stores/foundation.store';
 import { useNovelSettingsStore } from '../stores/settings.store';
+import { useOutlineStore } from '../stores/outline.store';
+import { resolveChapterPrompt } from './outline-prompt.service';
 
 function getLatestAssistantMessageAfter(baseMessageId: number): ChatMessage | null {
   const lastMessageId = getLastMessageId();
@@ -94,8 +97,14 @@ export async function waitForAIResponseStable(baseMessageId: number, settings: N
   return waitForMessageStable(targetMessageId, settings);
 }
 
-export async function generateSingleChapter(chapterNumber: number, settings: NovelSettings): Promise<number> {
-  const baseMessageId = await sendPrompt(settings.prompt, settings);
+export async function generateSingleChapter(
+  chapterNumber: number,
+  settings: NovelSettings,
+  options: {
+    prompt?: string;
+  } = {},
+): Promise<number> {
+  const baseMessageId = await sendPrompt(options.prompt ?? settings.prompt, settings);
   const assistantMessage = await waitForAIResponseStable(baseMessageId, settings);
   const length = assistantMessage.message.trim().length;
 
@@ -106,13 +115,32 @@ export async function generateSingleChapter(chapterNumber: number, settings: Nov
   return length;
 }
 
+async function emitChapterPromptWarning(
+  onChapterPromptWarning: ((chapter: number, warning: string) => Promise<void>) | undefined,
+  chapter: number,
+  warning: string,
+): Promise<void> {
+  if (!onChapterPromptWarning) {
+    return;
+  }
+
+  try {
+    await onChapterPromptWarning(chapter, warning);
+  } catch (error) {
+    console.warn(`[novelToST] 第 ${chapter} 章提示降级告警回调失败`, error);
+  }
+}
+
 export async function startLoop(options: {
   onAutoSave?: (chapter: number) => Promise<void>;
   onChapterDone?: (chapter: number, length: number) => Promise<void>;
   onChapterFailed?: (chapter: number, retry: number, message: string) => Promise<void>;
+  onChapterPromptWarning?: (chapter: number, warning: string) => Promise<void>;
 } = {}): Promise<{ stoppedByUser: boolean; completed: boolean }> {
   const settingsStore = useNovelSettingsStore();
   const generationStore = useGenerationStore();
+  const outlineStore = useOutlineStore();
+  const foundationStore = useFoundationStore();
 
   for (let chapter = settingsStore.settings.currentChapter; chapter < settingsStore.settings.totalChapters; chapter += 1) {
     await waitForResumeOrAbort();
@@ -124,10 +152,24 @@ export async function startLoop(options: {
     for (let retry = 0; retry < settingsStore.settings.maxRetries; retry += 1) {
       generationStore.setRetryCount(retry);
       try {
-        const length = await generateSingleChapter(chapter + 1, settingsStore.settings);
+        const chapterNumber = chapter + 1;
+        const resolvedPrompt = resolveChapterPrompt(
+          chapterNumber,
+          settingsStore.settings,
+          outlineStore.toStateSnapshot(),
+          foundationStore.foundation,
+        );
+
+        if (resolvedPrompt.warning) {
+          await emitChapterPromptWarning(options.onChapterPromptWarning, chapterNumber, resolvedPrompt.warning.message);
+        }
+
+        const length = await generateSingleChapter(chapterNumber, settingsStore.settings, {
+          prompt: resolvedPrompt.prompt,
+        });
         generationStore.recordGeneratedChapter(length);
-        settingsStore.setCurrentChapter(chapter + 1);
-        generationStore.setCurrentChapter(chapter + 1);
+        settingsStore.setCurrentChapter(chapterNumber);
+        generationStore.setCurrentChapter(chapterNumber);
         generationStore.setRetryCount(0);
 
         if (options.onChapterDone) {

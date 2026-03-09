@@ -1,3 +1,16 @@
+type LiteralUnion<T extends U, U = string> = T | (U & Record<never, never>);
+
+type PartialDeep<T> =
+  T extends (...args: any[]) => any
+    ? T
+    : T extends readonly (infer U)[]
+      ? ReadonlyArray<PartialDeep<U>>
+      : T extends Array<infer U>
+        ? Array<PartialDeep<U>>
+        : T extends object
+          ? { [K in keyof T]?: PartialDeep<T[K]> }
+          : T;
+
 /**
  * 获取世界书名称列表
  *

@@ -5,6 +5,7 @@
         type="checkbox"
         :checked="modelValue"
         :disabled="disabled"
+        v-bind="inputAttrs"
         class="peer size-4 appearance-none border border-white/25 bg-transparent transition-all checked:border-cyan-400 checked:bg-cyan-500/20 hover:border-cyan-300 focus:ring-1 focus:ring-cyan-400/40 focus:outline-none"
         @change="updateValue"
       />
@@ -29,11 +30,13 @@ withDefaults(
     modelValue?: boolean;
     label?: string;
     disabled?: boolean;
+    inputAttrs?: Record<string, unknown>;
   }>(),
   {
     modelValue: false,
     label: '',
     disabled: false,
+    inputAttrs: () => ({}),
   },
 );
 

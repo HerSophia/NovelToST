@@ -150,7 +150,35 @@ describe('useGenerationControl integration', () => {
     expect(generationStore.status).toBe('completed');
     expect(uiStore.statusMessage).toBe('已完成');
     expect(mocked.exportTXT).toHaveBeenCalledWith(sampleChapters, { silent: false });
-    expect(stMocks.toastr.success).toHaveBeenCalledWith('自动续写完成');
+    expect(stMocks.toastr.success).toHaveBeenCalledWith('全部章节生成完成！');
+  });
+
+  it('should show fallback toast once per chapter when prompt warnings are repeated', async () => {
+    mocked.startLoop.mockImplementation(
+      async (options: {
+        onChapterPromptWarning?: (chapter: number, warning: string) => Promise<void>;
+      }) => {
+        await options.onChapterPromptWarning?.(1, '第一次降级告警');
+        await options.onChapterPromptWarning?.(1, '同章重复降级告警');
+        await options.onChapterPromptWarning?.(2, '第二章降级告警');
+
+        return {
+          stoppedByUser: false,
+          completed: false,
+        };
+      },
+    );
+
+    const control = useGenerationControl();
+    await control.start();
+
+    const fallbackWarningCalls = stMocks.toastr.warning.mock.calls.filter(
+      call => call[0] === '本章缺少细纲，已启用回退模式继续生成',
+    );
+
+    expect(fallbackWarningCalls).toHaveLength(2);
+    expect(fallbackWarningCalls[0]?.[0]).toBe('本章缺少细纲，已启用回退模式继续生成');
+    expect(fallbackWarningCalls[1]?.[0]).toBe('本章缺少细纲，已启用回退模式继续生成');
   });
 
   it('should update status and toast when pause resume and stop called', () => {
@@ -172,7 +200,7 @@ describe('useGenerationControl integration', () => {
     expect(useUiStore().statusMessage).toBe('停止中');
     expect(stMocks.toastr.info).toHaveBeenCalledWith('已暂停生成');
     expect(stMocks.toastr.info).toHaveBeenCalledWith('已恢复生成');
-    expect(stMocks.toastr.warning).toHaveBeenCalledWith('已请求停止，等待当前步骤结束');
+    expect(stMocks.toastr.warning).toHaveBeenCalledWith('正在停止，会在当前章节安全完成后停下');
   });
 
   it('should block reset while generation is running', () => {
@@ -210,7 +238,7 @@ describe('useGenerationControl integration', () => {
     expect(exportStore.lastChapters).toEqual([]);
     expect(exportStore.latestPreview).toBe('');
     expect(useUiStore().statusMessage).toBe('进度已重置');
-    expect(stMocks.toastr.info).toHaveBeenCalledWith('已重置生成进度');
+    expect(stMocks.toastr.info).toHaveBeenCalledWith('进度已清零，可以重新开始');
   });
 
   it('should mark error and open modal when start throws', async () => {

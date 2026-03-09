@@ -24,9 +24,9 @@
 
       <BaseTextarea
         v-model="settings.prompt"
-        label="提示词"
+        label="续写提示词"
         :rows="3"
-        placeholder="输入用于指导生成的提示词..."
+        placeholder="告诉 AI 接下来要写什么…（启用大纲后，此处作为补充要求）"
       />
 
       <div class="grid gap-4 sm:grid-cols-3">
@@ -49,19 +49,19 @@
           label="最小章节长度"
           type="number"
           min="0"
-          hint="小于此长度视为生成失败"
+          hint="AI 输出少于此字数会判定为失败并重试"
         />
       </div>
 
       <div class="border-t border-white/10 pt-3">
-        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">回复稳定判定</p>
+        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">回复完成检测</p>
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput
             v-model.number="settings.stabilityCheckInterval"
             label="稳定检查间隔"
             type="number"
             min="200"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 3000 = 3 秒）"
           />
           <BaseInput
             v-model.number="settings.stabilityRequiredCount"
@@ -75,15 +75,15 @@
             label="回复后固定等待"
             type="number"
             min="0"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 3000 = 3 秒）"
           />
         </div>
       </div>
 
       <div class="border-t border-white/10 pt-3">
-        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">发送阶段弹窗检测</p>
+        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">发送确认检测（高级）</p>
         <BaseCheckbox v-model="settings.enableSendToastDetection">
-          启用发送阶段弹窗检测
+          启用发送确认检测
         </BaseCheckbox>
         <div class="mt-3 grid gap-4 sm:grid-cols-2">
           <BaseInput
@@ -91,7 +91,7 @@
             label="发送弹窗等待超时"
             type="number"
             min="1000"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 5000 = 5 秒）"
             :disabled="!settings.enableSendToastDetection"
           />
           <BaseInput
@@ -99,16 +99,16 @@
             label="发送弹窗结束后额外等待"
             type="number"
             min="0"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 1000 = 1 秒）"
             :disabled="!settings.enableSendToastDetection"
           />
         </div>
       </div>
 
       <div class="border-t border-white/10 pt-3">
-        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">回复阶段弹窗检测</p>
+        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">回复完成确认（高级）</p>
         <BaseCheckbox v-model="settings.enableReplyToastDetection">
-          启用回复阶段弹窗检测
+          启用回复完成确认检测
         </BaseCheckbox>
         <div class="mt-3 grid gap-4 sm:grid-cols-2">
           <BaseInput
@@ -116,7 +116,7 @@
             label="回复弹窗等待超时"
             type="number"
             min="1000"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 5000 = 5 秒）"
             :disabled="!settings.enableReplyToastDetection"
           />
           <BaseInput
@@ -124,44 +124,44 @@
             label="回复弹窗结束后额外等待"
             type="number"
             min="0"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 1000 = 1 秒）"
             :disabled="!settings.enableReplyToastDetection"
           />
         </div>
       </div>
 
       <div class="border-t border-white/10 pt-3">
-        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">超时与兼容选项</p>
+        <p class="mb-3 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">超时设置与兼容选项</p>
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput
             v-model.number="settings.maxWaitForResponseStart"
             label="等待回复开始超时"
             type="number"
             min="3000"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 30000 = 30 秒）"
           />
           <BaseInput
             v-model.number="settings.maxWaitForStable"
             label="等待回复稳定超时"
             type="number"
             min="5000"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 60000 = 60 秒）"
           />
           <BaseInput
             v-model.number="settings.retryBackoffMs"
             label="失败重试间隔"
             type="number"
             min="0"
-            hint="毫秒 (ms)"
+            hint="毫秒（如 3000 = 3 秒）"
           />
         </div>
 
         <div class="mt-3 grid gap-2">
           <BaseCheckbox v-model="settings.useRawContent">
-            导出/提取优先使用 raw 内容
+            导出时使用原始文本（不含 HTML 样式）
           </BaseCheckbox>
           <BaseCheckbox v-model="settings.reloadOnChatChange">
-            聊天切换时自动重载脚本
+            切换聊天时自动刷新插件
           </BaseCheckbox>
         </div>
       </div>

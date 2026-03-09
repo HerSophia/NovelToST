@@ -30,10 +30,28 @@ export const stMocks = {
   >(),
   replaceScriptInfo: vi.fn<(markdown: string) => void>(),
   getTavernHelperVersion: vi.fn<() => Promise<string>>(),
+  updateVariablesWith: vi.fn<(updater: (variables: Record<string, any>) => Record<string, any>, option: VariableOption) => Record<string, any>>(),
   eventEmit: vi.fn<(eventName: string, ...args: unknown[]) => void>(),
   eventMakeFirst: vi.fn<(eventName: string, callback: (...args: any[]) => void) => EventOnReturn>(),
+  getLoadedPresetName: vi.fn<() => string>(),
+  getPreset: vi.fn<(presetName: string) => unknown>(),
+  getCurrentCharacterName: vi.fn<() => string | null>(),
+  getWorldbookNames: vi.fn<() => string[]>(),
+  getGlobalWorldbookNames: vi.fn<() => string[]>(),
+  getCharWorldbookNames: vi.fn<(characterName: 'current' | string) => { primary: string | null; additional: string[] }>(),
+  getWorldbook: vi.fn<(worldbookName: string) => Promise<Array<Record<string, unknown>>>>(),
+  createWorldbookEntries: vi.fn<
+    (
+      worldbookName: string,
+      newEntries: Array<Record<string, unknown>>,
+      options?: { render?: 'debounced' | 'immediate' },
+    ) => Promise<{ worldbook: Array<Record<string, unknown>>; new_entries: Array<Record<string, unknown>> }>
+  >(),
+  getChatWorldbookName: vi.fn<(chatName: 'current') => string | null>(),
+  rebindChatWorldbook: vi.fn<(chatName: 'current', worldbookName: string) => Promise<void>>(),
   substitudeMacros: vi.fn<(text: string) => string>(),
   errorCatched: vi.fn<(fn: (...args: any[]) => any) => (...args: any[]) => any>(),
+  stopGenerationById: vi.fn<(generationId: string) => boolean>(),
   SillyTavern: {
     getCurrentChatId: vi.fn<() => unknown>(),
     chat: [] as unknown[],
@@ -64,10 +82,22 @@ export function installSTGlobalMocks(): void {
   globalRef.insertOrAssignVariables = stMocks.insertOrAssignVariables;
   globalRef.replaceScriptInfo = stMocks.replaceScriptInfo;
   globalRef.getTavernHelperVersion = stMocks.getTavernHelperVersion;
+  globalRef.updateVariablesWith = stMocks.updateVariablesWith;
   globalRef.eventEmit = stMocks.eventEmit;
   globalRef.eventMakeFirst = stMocks.eventMakeFirst;
   globalRef.substitudeMacros = stMocks.substitudeMacros;
+  globalRef.getLoadedPresetName = stMocks.getLoadedPresetName;
+  globalRef.getPreset = stMocks.getPreset;
+  globalRef.getCurrentCharacterName = stMocks.getCurrentCharacterName;
+  globalRef.getWorldbookNames = stMocks.getWorldbookNames;
+  globalRef.getGlobalWorldbookNames = stMocks.getGlobalWorldbookNames;
+  globalRef.getCharWorldbookNames = stMocks.getCharWorldbookNames;
+  globalRef.getWorldbook = stMocks.getWorldbook;
+  globalRef.createWorldbookEntries = stMocks.createWorldbookEntries;
+  globalRef.getChatWorldbookName = stMocks.getChatWorldbookName;
+  globalRef.rebindChatWorldbook = stMocks.rebindChatWorldbook;
   globalRef.errorCatched = stMocks.errorCatched;
+  globalRef.stopGenerationById = stMocks.stopGenerationById;
   globalRef.SillyTavern = stMocks.SillyTavern;
   globalRef.tavern_events = stMocks.tavern_events;
   globalRef.toastr = stMocks.toastr;
@@ -111,6 +141,9 @@ export function resetSTGlobalMockState(): void {
   stMocks.getTavernHelperVersion.mockReset();
   stMocks.getTavernHelperVersion.mockResolvedValue('0.0.0');
 
+  stMocks.updateVariablesWith.mockReset();
+  stMocks.updateVariablesWith.mockImplementation((updater: (variables: Record<string, any>) => Record<string, any>) => updater({}));
+
   stMocks.eventEmit.mockReset();
 
   stMocks.eventMakeFirst.mockReset();
@@ -119,8 +152,41 @@ export function resetSTGlobalMockState(): void {
   stMocks.substitudeMacros.mockReset();
   stMocks.substitudeMacros.mockImplementation(text => text);
 
+  stMocks.getLoadedPresetName.mockReset();
+  stMocks.getLoadedPresetName.mockReturnValue('默认预设');
+
+  stMocks.getPreset.mockReset();
+  stMocks.getPreset.mockImplementation(() => ({ prompts: [] }));
+
+  stMocks.getCurrentCharacterName.mockReset();
+  stMocks.getCurrentCharacterName.mockReturnValue(null);
+
+  stMocks.getWorldbookNames.mockReset();
+  stMocks.getWorldbookNames.mockReturnValue([]);
+
+  stMocks.getGlobalWorldbookNames.mockReset();
+  stMocks.getGlobalWorldbookNames.mockReturnValue([]);
+
+  stMocks.getCharWorldbookNames.mockReset();
+  stMocks.getCharWorldbookNames.mockReturnValue({ primary: null, additional: [] });
+
+  stMocks.getWorldbook.mockReset();
+  stMocks.getWorldbook.mockResolvedValue([]);
+
+  stMocks.createWorldbookEntries.mockReset();
+  stMocks.createWorldbookEntries.mockResolvedValue({ worldbook: [], new_entries: [] });
+
+  stMocks.getChatWorldbookName.mockReset();
+  stMocks.getChatWorldbookName.mockReturnValue(null);
+
+  stMocks.rebindChatWorldbook.mockReset();
+  stMocks.rebindChatWorldbook.mockResolvedValue();
+
   stMocks.errorCatched.mockReset();
   stMocks.errorCatched.mockImplementation(fn => fn);
+
+  stMocks.stopGenerationById.mockReset();
+  stMocks.stopGenerationById.mockReturnValue(false);
 
   stMocks.SillyTavern.getCurrentChatId.mockReset();
   stMocks.SillyTavern.getCurrentChatId.mockReturnValue('test-chat-id');

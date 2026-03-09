@@ -79,13 +79,39 @@ const config: Config = {
   entries: glob_script_files().map(parse_entry),
 };
 
+const watch_cors_origin_raw = process.env.TAVERN_HELPER_WATCH_CORS_ORIGIN?.trim() ?? '*';
+const watch_cors_origin =
+  watch_cors_origin_raw === '*'
+    ? '*'
+    : watch_cors_origin_raw
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(origin => origin.length > 0);
+const watch_cors_credentials =
+  process.env.TAVERN_HELPER_WATCH_CORS_CREDENTIALS === 'true' && watch_cors_origin !== '*';
+
 let io: Server;
 function watch_tavern_helper(compiler: webpack.Compiler) {
   if (compiler.options.watch) {
     if (!io) {
       const port = config.port ?? 6621;
-      io = new Server(port, { cors: { origin: '*' } });
-      console.info(`\x1b[36m[tavern_helper]\x1b[0m 已启动酒馆监听服务`);
+      io = new Server(port, {
+        cors: {
+          origin: watch_cors_origin,
+          methods: ['GET', 'POST', 'OPTIONS'],
+          credentials: watch_cors_credentials,
+        },
+      });
+      io.engine.on('initial_headers', headers => {
+        headers['Access-Control-Allow-Private-Network'] = 'true';
+      });
+      io.engine.on('headers', headers => {
+        headers['Access-Control-Allow-Private-Network'] = 'true';
+      });
+      const cors_origin = Array.isArray(watch_cors_origin) ? watch_cors_origin.join(', ') : watch_cors_origin;
+      console.info(
+        `\x1b[36m[tavern_helper]\x1b[0m 已启动酒馆监听服务 (CORS origin: ${cors_origin}, credentials: ${watch_cors_credentials ? 'on' : 'off'})`,
+      );
       io.on('connect', socket => {
         console.info(`\x1b[36m[tavern_helper]\x1b[0m 成功连接到酒馆网页 '${socket.id}', 初始化推送...`);
         io.emit('iframe_updated');

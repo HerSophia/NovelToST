@@ -5,6 +5,7 @@
     content-class="w-[min(760px,95vw)] max-h-[86vh] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-slate-100 shadow-xl"
     :click-to-close="true"
     :esc-to-close="true"
+    :teleport-to="teleportTo"
     @update:model-value="value => emit('update:modelValue', value)"
   >
     <div class="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3">
@@ -71,9 +72,11 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean;
     topic?: HelpTopicId;
+    teleportTo?: string | false;
   }>(),
   {
     topic: 'generate',
+    teleportTo: 'body',
   },
 );
 

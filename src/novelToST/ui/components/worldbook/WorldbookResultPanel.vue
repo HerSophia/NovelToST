@@ -18,10 +18,14 @@
           placeholder="搜索条目..."
           class="flex-1"
         />
-        <BaseSelect v-model="filterCategory" class="w-32">
-          <option value="">全部分类</option>
-          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-        </BaseSelect>
+        <BaseDropdownSelect
+          v-model="filterCategory"
+          class="w-32"
+          :options="categoryFilterOptions"
+          data-worldbook-result-category-filter-select
+          list-data-attr-name="data-worldbook-result-category-filter-list"
+          item-data-attr-name="data-worldbook-result-category-filter-option"
+        />
       </div>
 
       <!-- Entry count -->
@@ -126,7 +130,7 @@ import BaseButton from '../../base/BaseButton.vue';
 import BaseCard from '../../base/BaseCard.vue';
 import BaseCheckbox from '../../base/BaseCheckbox.vue';
 import BaseInput from '../../base/BaseInput.vue';
-import BaseSelect from '../../base/BaseSelect.vue';
+import BaseDropdownSelect from '../../base/BaseDropdownSelect.vue';
 import type { WorldbookEntry } from '../../../types/worldbook';
 
 defineProps<{
@@ -155,6 +159,13 @@ const categories = computed(() => {
     if (entry.category) set.add(entry.category);
   }
   return Array.from(set).sort();
+});
+
+const categoryFilterOptions = computed<Array<{ value: string; label: string }>>(() => {
+  return [
+    { value: '', label: '全部分类' },
+    ...categories.value.map(category => ({ value: category, label: category })),
+  ];
 });
 
 const filteredEntries = computed(() => {

@@ -4,6 +4,7 @@ import { useWorldbookControl } from './composables/useWorldbookControl';
 import { registerNovelButtons } from './commands/buttons';
 import { registerNovelDebugCommand } from './commands/debug';
 import { useWorldbookStore } from './stores/worldbook.store';
+import { emitWorkbenchOpen } from './app/workbench.events';
 
 const WORLDBOOK_PANEL_STORAGE_KEY = 'novelToST.ui.panel.worldbook';
 
@@ -56,16 +57,21 @@ function registerWorldbookGlobalAPI(): { unregister: () => void } {
  * and scrolling the panel into view if it exists in the DOM.
  */
 function focusWorldbookPanel(): void {
+  emitWorkbenchOpen({ tab: 'generation' });
+
   try {
     window.localStorage.setItem(WORLDBOOK_PANEL_STORAGE_KEY, '0');
   } catch {
     // persistence not available
   }
 
-  // Dispatch a custom event so App.vue can react and expand the panel at runtime
-  window.dispatchEvent(new CustomEvent('novelToST:expandWorldbook'));
+  // Dispatch twice for compatibility: once immediately, once after possible lazy mount
+  const dispatchExpand = () => {
+    window.dispatchEvent(new CustomEvent('novelToST:expandWorldbook'));
+  };
+  dispatchExpand();
+  window.setTimeout(dispatchExpand, 320);
 
-  // Best-effort scroll into view
   requestAnimationFrame(() => {
     const panel = document.querySelector('[data-panel="worldbook"]');
     if (panel) {

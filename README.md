@@ -2,6 +2,12 @@
 
 酒馆助手编写前端界面或脚本的模板.
 
+## NovelToST 文档入口
+
+- v1.2 设计稿：`docs/design/v1.md`
+- v1.3 设计稿（含世界设定工坊与世界书写回）：`docs/design/v1.3.md`
+- 设定工坊操作说明：见 `docs/design/v1.3.md` 的「12) 操作说明（v1.3 工坊）」
+
 ## 使用方法
 
 无论哪种方式, 请阅读[教程文档](https://stagedog.github.io/青空莉/工具经验/实时编写前端界面或脚本/)来了解如何使用.
@@ -29,6 +35,31 @@
   - 自动更新成最新的编写模板, 自动更新酒馆和酒馆助手的参考文件……
 
 但你本地依旧能很方便地使用这个模板.
+
+### 开发环境跨域实时推送（Webpack watch）
+
+`pnpm watch` 会启动本地实时推送服务（默认端口 `6621`），用于在酒馆页面中接收编译完成事件。
+
+默认允许任意来源（`*`）。如需按环境自定义，可在启动前设置：
+
+- `TAVERN_HELPER_WATCH_CORS_ORIGIN`：允许的来源，支持 `*` 或逗号分隔列表；
+- `TAVERN_HELPER_WATCH_CORS_CREDENTIALS`：是否允许携带凭据（`true/false`，仅当 origin 不是 `*` 时生效）。
+
+PowerShell 示例：
+
+```powershell
+$env:TAVERN_HELPER_WATCH_CORS_ORIGIN = 'http://localhost:8000,http://127.0.0.1:8000'
+$env:TAVERN_HELPER_WATCH_CORS_CREDENTIALS = 'true'
+pnpm watch
+```
+
+CMD 示例：
+
+```cmd
+set TAVERN_HELPER_WATCH_CORS_ORIGIN=http://localhost:8000,http://127.0.0.1:8000
+set TAVERN_HELPER_WATCH_CORS_CREDENTIALS=true
+pnpm watch
+```
 
 ## 如果创建为新仓库
 

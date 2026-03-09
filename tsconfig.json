@@ -51,5 +51,6 @@
   "exclude": [
     "**/dist/**",
     "**/node_modules/**",
+    "src/novelToST/types/host-env-ignore.d.ts"
   ]
 }

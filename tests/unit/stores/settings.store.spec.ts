@@ -23,6 +23,8 @@ describe('settings.store', () => {
     expect(store.settings.worldbook.chunkSize).toBe(15000);
     expect(store.settings.worldbook.customApiProvider).toBe('gemini');
     expect(store.settings.worldbook.startChunkIndex).toBe(1);
+    expect(store.settings.worldbook.llmPresets).toEqual([]);
+    expect(store.settings.worldbook.activeLLMPresetId).toBeNull();
   });
 
   it('should fallback to defaults and warn when script variables are invalid', () => {
@@ -81,5 +83,32 @@ describe('settings.store', () => {
 
     store.patch({ worldbook: { chunkSize: 22000 } });
     expect(store.settings.worldbook.chunkSize).toBe(22000);
+  });
+
+  it('should persist llm preset fields in worldbook settings patch', () => {
+    const store = useNovelSettingsStore();
+
+    store.patch({
+      worldbook: {
+        llmPresets: [
+          {
+            id: 'preset-1',
+            name: '主力配置',
+            useTavernApi: false,
+            apiTimeout: 150000,
+            customApiProvider: 'openai',
+            customApiEndpoint: 'https://example.com/v1/chat/completions',
+            customApiModel: 'gpt-4.1',
+            customApiKey: 'sk-test',
+            createdAt: '2026-03-04T00:00:00.000Z',
+            updatedAt: '2026-03-04T00:00:00.000Z',
+          },
+        ],
+        activeLLMPresetId: 'preset-1',
+      },
+    });
+
+    expect(store.settings.worldbook.llmPresets).toHaveLength(1);
+    expect(store.settings.worldbook.activeLLMPresetId).toBe('preset-1');
   });
 });

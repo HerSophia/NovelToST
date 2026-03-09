@@ -1,249 +1,137 @@
 import { bootstrapNovelToSTPanel } from '@/novelToST/app/bootstrap';
-type LoadHandler = ((this: HTMLIFrameElement) => void) | null;
+import {
+  WORKBENCH_CLOSE_EVENT,
+  WORKBENCH_FOCUS_EVENT,
+  WORKBENCH_OPEN_EVENT,
+} from '@/novelToST/app/workbench.events';
 
 const bootstrapMock = vi.hoisted(() => {
-  const appInstance = {
-    use: vi.fn(),
-    mount: vi.fn(),
+  const runtime = {
+    pinia: {} as unknown,
+    dispose: vi.fn(),
+  };
+
+  const extensionEntry = {
     unmount: vi.fn(),
   };
-  appInstance.use.mockReturnValue(appInstance);
 
-  const host = {
-    addClass: vi.fn(),
-    appendTo: vi.fn(),
-    remove: vi.fn(),
-  } as unknown as {
-    addClass: ReturnType<typeof vi.fn>;
-    appendTo: ReturnType<typeof vi.fn>;
-    remove: ReturnType<typeof vi.fn>;
+  const workbench = {
+    open: vi.fn(),
+    close: vi.fn(),
+    focus: vi.fn(),
+    preload: vi.fn(),
+    unmount: vi.fn(),
   };
-  host.addClass.mockReturnValue(host);
-  host.appendTo.mockReturnValue(host);
-
-  const iframeElement = { contentDocument: null as Document | null } as unknown as HTMLIFrameElement;
-  const state: { loadHandler: LoadHandler } = { loadHandler: null };
-
-  const iframe = {
-    0: iframeElement,
-    addClass: vi.fn(),
-    css: vi.fn(),
-    appendTo: vi.fn(),
-    on: vi.fn((event: string, handler: (this: HTMLIFrameElement) => void) => {
-      if (event === 'load') {
-        state.loadHandler = handler;
-      }
-      return iframe;
-    }),
-    remove: vi.fn(),
-  } as unknown as {
-    0: HTMLIFrameElement;
-    addClass: ReturnType<typeof vi.fn>;
-    css: ReturnType<typeof vi.fn>;
-    appendTo: ReturnType<typeof vi.fn>;
-    on: ReturnType<typeof vi.fn>;
-    remove: ReturnType<typeof vi.fn>;
-  };
-  iframe.addClass.mockReturnValue(iframe);
-  iframe.css.mockReturnValue(iframe);
-  iframe.appendTo.mockReturnValue(iframe);
-
-  const createScriptIdDiv = vi.fn(() => host);
-  const createScriptIdIframe = vi.fn(() => iframe);
-  const styleDestroy = vi.fn();
-  const teleportStyle = vi.fn(() => ({ destroy: styleDestroy }));
-
-  const hydrate = vi.fn();
-  const pausePersistence = vi.fn();
-  const disposeLifecycle = vi.fn();
-  const setMounted = vi.fn();
-
-  const createApp = vi.fn(() => appInstance);
-  const createVfm = vi.fn(() => ({ plugin: 'vfm' }));
 
   return {
-    state,
-    appInstance,
-    host,
-    iframe,
-    iframeElement,
-    createScriptIdDiv,
-    createScriptIdIframe,
-    teleportStyle,
-    styleDestroy,
-    hydrate,
-    pausePersistence,
-    disposeLifecycle,
-    setMounted,
-    createApp,
-    createVfm,
+    runtime,
+    extensionEntry,
+    workbench,
+    getOrCreateNovelToSTRuntime: vi.fn(() => runtime),
+    mountExtensionEntry: vi.fn(() => extensionEntry),
+    mountWorkbench: vi.fn(() => workbench),
   };
 });
 
-vi.mock('vue', async importOriginal => {
-  const actual = await importOriginal<typeof import('vue')>();
+vi.mock('@/novelToST/app/runtime', () => ({
+  getOrCreateNovelToSTRuntime: bootstrapMock.getOrCreateNovelToSTRuntime,
+}));
+
+vi.mock('@/novelToST/app/mount-extension-entry', () => ({
+  mountExtensionEntry: bootstrapMock.mountExtensionEntry,
+}));
+
+vi.mock('@/novelToST/app/mount-workbench', () => ({
+  mountWorkbench: bootstrapMock.mountWorkbench,
+}));
+
+function createIdleDeadline(): IdleDeadline {
   return {
-    ...actual,
-    createApp: bootstrapMock.createApp,
+    didTimeout: false,
+    timeRemaining: () => 16,
   };
-});
-
-vi.mock('vue-final-modal', () => ({
-  createVfm: bootstrapMock.createVfm,
-}));
-
-vi.mock('@util/script', () => ({
-  createScriptIdDiv: bootstrapMock.createScriptIdDiv,
-  createScriptIdIframe: bootstrapMock.createScriptIdIframe,
-  teleportStyle: bootstrapMock.teleportStyle,
-}));
-
-vi.mock('@/novelToST/composables/useScriptPersistence', () => ({
-  useScriptPersistence: () => ({
-    hydrate: bootstrapMock.hydrate,
-    pausePersistence: bootstrapMock.pausePersistence,
-  }),
-}));
-
-vi.mock('@/novelToST/composables/usePanelLifecycle', () => ({
-  usePanelLifecycle: () => ({
-    dispose: bootstrapMock.disposeLifecycle,
-  }),
-}));
-
-vi.mock('@/novelToST/stores/ui.store', () => ({
-  useUiStore: () => ({
-    setMounted: bootstrapMock.setMounted,
-  }),
-}));
-
-function createIframeDocument(bodyHeight: number, docHeight: number): Document {
-  const doc = document.implementation.createHTMLDocument('iframe-doc');
-  Object.defineProperty(doc.body, 'scrollHeight', {
-    configurable: true,
-    get: () => bodyHeight,
-  });
-  Object.defineProperty(doc.documentElement, 'scrollHeight', {
-    configurable: true,
-    get: () => docHeight,
-  });
-  return doc;
-}
-
-function setIframeContentDocument(doc: Document | null): void {
-  (bootstrapMock.iframeElement as unknown as {
-    contentDocument: Document | null;
-  }).contentDocument = doc;
 }
 
 describe('bootstrapNovelToSTPanel', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    bootstrapMock.runtime.dispose.mockClear();
 
-    bootstrapMock.state.loadHandler = null;
-    setIframeContentDocument(null);
+    bootstrapMock.getOrCreateNovelToSTRuntime.mockClear();
+    bootstrapMock.mountExtensionEntry.mockClear();
+    bootstrapMock.mountWorkbench.mockClear();
 
-    bootstrapMock.createScriptIdDiv.mockClear();
-    bootstrapMock.createScriptIdIframe.mockClear();
-    bootstrapMock.teleportStyle.mockClear();
-    bootstrapMock.styleDestroy.mockClear();
-    bootstrapMock.hydrate.mockClear();
-    bootstrapMock.pausePersistence.mockClear();
-    bootstrapMock.disposeLifecycle.mockClear();
-    bootstrapMock.setMounted.mockClear();
-    bootstrapMock.createApp.mockClear();
-    bootstrapMock.createVfm.mockClear();
+    bootstrapMock.extensionEntry.unmount.mockClear();
 
-    bootstrapMock.host.addClass.mockClear();
-    bootstrapMock.host.appendTo.mockClear();
-    bootstrapMock.host.remove.mockClear();
+    bootstrapMock.workbench.open.mockClear();
+    bootstrapMock.workbench.close.mockClear();
+    bootstrapMock.workbench.focus.mockClear();
+    bootstrapMock.workbench.preload.mockClear();
+    bootstrapMock.workbench.unmount.mockClear();
 
-    bootstrapMock.iframe.addClass.mockClear();
-    bootstrapMock.iframe.css.mockClear();
-    bootstrapMock.iframe.appendTo.mockClear();
-    bootstrapMock.iframe.on.mockClear();
-    bootstrapMock.iframe.remove.mockClear();
-
-    bootstrapMock.appInstance.use.mockClear();
-    bootstrapMock.appInstance.mount.mockClear();
-    bootstrapMock.appInstance.unmount.mockClear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it('should mount in iframe and cleanup all resources on unmount', async () => {
-    const resizeObserverState: {
-      callback: ResizeObserverCallback | null;
-      observe: ReturnType<typeof vi.fn>;
-      disconnect: ReturnType<typeof vi.fn>;
-    } = {
-      callback: null,
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    };
-
-    class ResizeObserverMock {
-      observe = resizeObserverState.observe;
-      disconnect = resizeObserverState.disconnect;
-
-      constructor(callback: ResizeObserverCallback) {
-        resizeObserverState.callback = callback;
-      }
-    }
-    vi.stubGlobal('ResizeObserver', ResizeObserverMock as unknown as typeof ResizeObserver);
-
-    const iframeDoc = createIframeDocument(120, 160);
-    setIframeContentDocument(iframeDoc);
+  it('should mount runtime surfaces and bridge workbench events', () => {
+    const requestIdleCallback = vi.fn(() => 7);
+    const cancelIdleCallback = vi.fn();
+    vi.stubGlobal('requestIdleCallback', requestIdleCallback);
+    vi.stubGlobal('cancelIdleCallback', cancelIdleCallback);
 
     const { unmount } = bootstrapNovelToSTPanel();
 
-    expect(bootstrapMock.hydrate).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.createScriptIdDiv).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.createScriptIdIframe).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.host.appendTo).toHaveBeenCalledWith('#extensions_settings2');
+    expect(bootstrapMock.getOrCreateNovelToSTRuntime).toHaveBeenCalledTimes(1);
+    expect(bootstrapMock.mountExtensionEntry).toHaveBeenCalledWith(bootstrapMock.runtime);
+    expect(bootstrapMock.mountWorkbench).toHaveBeenCalledWith(bootstrapMock.runtime);
 
-    bootstrapMock.state.loadHandler?.call(bootstrapMock.iframeElement);
+    window.dispatchEvent(new CustomEvent(WORKBENCH_OPEN_EVENT, { detail: { tab: 'detail', chapter: 6 } }));
+    window.dispatchEvent(new CustomEvent(WORKBENCH_CLOSE_EVENT));
+    window.dispatchEvent(new CustomEvent(WORKBENCH_FOCUS_EVENT));
 
-    expect(bootstrapMock.teleportStyle).toHaveBeenCalledWith(iframeDoc.head);
-    expect(bootstrapMock.appInstance.mount).toHaveBeenCalledWith(iframeDoc.body);
-    expect(bootstrapMock.setMounted).toHaveBeenCalledWith(true);
-    expect(resizeObserverState.observe).toHaveBeenCalledWith(iframeDoc.body);
-    expect(bootstrapMock.iframe.css).toHaveBeenCalledWith('height', '160px');
-
-    const cssCallsBeforeNullDoc = bootstrapMock.iframe.css.mock.calls.length;
-    setIframeContentDocument(null);
-    resizeObserverState.callback?.([] as ResizeObserverEntry[], {} as ResizeObserver);
-    expect(bootstrapMock.iframe.css.mock.calls.length).toBe(cssCallsBeforeNullDoc);
+    expect(bootstrapMock.workbench.open).toHaveBeenCalledWith({ tab: 'detail', chapter: 6 });
+    expect(bootstrapMock.workbench.close).toHaveBeenCalledTimes(1);
+    expect(bootstrapMock.workbench.focus).toHaveBeenCalledTimes(1);
 
     unmount();
 
-    expect(bootstrapMock.setMounted).toHaveBeenLastCalledWith(false);
-    expect(resizeObserverState.disconnect).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.appInstance.unmount).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.styleDestroy).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.pausePersistence).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.disposeLifecycle).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.iframe.remove).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.host.remove).toHaveBeenCalledTimes(1);
+    expect(cancelIdleCallback).toHaveBeenCalledWith(7);
+    expect(bootstrapMock.workbench.unmount).toHaveBeenCalledTimes(1);
+    expect(bootstrapMock.extensionEntry.unmount).toHaveBeenCalledTimes(1);
+    expect(bootstrapMock.runtime.dispose).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new CustomEvent(WORKBENCH_OPEN_EVENT));
+    expect(bootstrapMock.workbench.open).toHaveBeenCalledTimes(1);
   });
 
-  it('should ignore iframe load when contentDocument is missing', () => {
+  it('should preload workbench via requestIdleCallback when available', () => {
+    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
+      callback(createIdleDeadline());
+      return 99;
+    });
+    vi.stubGlobal('requestIdleCallback', requestIdleCallback);
+    vi.stubGlobal('cancelIdleCallback', vi.fn());
+
     const { unmount } = bootstrapNovelToSTPanel();
 
-    setIframeContentDocument(null);
-    bootstrapMock.state.loadHandler?.call(bootstrapMock.iframeElement);
-
-    expect(bootstrapMock.teleportStyle).not.toHaveBeenCalled();
-    expect(bootstrapMock.appInstance.mount).not.toHaveBeenCalled();
-    expect(bootstrapMock.setMounted).not.toHaveBeenCalledWith(true);
+    expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+    expect(bootstrapMock.workbench.preload).toHaveBeenCalledTimes(1);
 
     unmount();
+  });
 
-    expect(bootstrapMock.appInstance.unmount).toHaveBeenCalledTimes(1);
-    expect(bootstrapMock.styleDestroy).not.toHaveBeenCalled();
-    expect(bootstrapMock.pausePersistence).toHaveBeenCalledTimes(1);
+  it('should fallback to setTimeout preload when requestIdleCallback is unavailable', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('requestIdleCallback', undefined);
+
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+
+    const { unmount } = bootstrapNovelToSTPanel();
+
+    expect(bootstrapMock.workbench.preload).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(280);
+    expect(bootstrapMock.workbench.preload).toHaveBeenCalledTimes(1);
+
+    unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
   });
 });
